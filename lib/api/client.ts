@@ -3,18 +3,27 @@ import type {
   ExecuteRequestPayload,
   ExecuteResponsePayload,
 } from "@/types/api";
+import type {
+  DSATopicGuide,
+  TutorChatRequestPayload,
+  TutorChatResponsePayload,
+  TutorConversationDetail,
+  TutorConversationSummary,
+  TutorProviderId,
+  TutorProvidersStatusResponse,
+} from "@/types/tutor";
 
 /**
- * CODEFLOW AI — Frontend API Integration Layer (Phase 2 Active)
+ * CODEFLOW AI — Frontend API Integration Layer (Phases 2–4 Active)
  *
  * Connects the Next.js workspace to the isolated FastAPI Python 3.12
- * execution and snapshot tracing service.
+ * execution/tracing engine and the Provider-Independent AI Tutor service.
  */
 
 export const API_CONFIG = {
   baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000",
-  timeoutMs: 12_000,
-  phase: 2 as const,
+  timeoutMs: 25_000,
+  phase: 4 as const,
 } as const;
 
 export class ApiClientError extends Error {
@@ -67,19 +76,28 @@ async function requestJson<TResponse>(
     }
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new ApiClientError(
-        "Execution request timed out while waiting for the Python backend.",
+        "Request timed out while waiting for the FastAPI backend.",
         "CLIENT_TIMEOUT",
         504
       );
     }
     throw new ApiClientError(
-      `Cannot reach FastAPI execution backend at ${API_CONFIG.baseUrl}. Ensure the Python backend server is running on port 8000.`,
+      `Cannot reach FastAPI backend at ${API_CONFIG.baseUrl}. Ensure the Python backend server is running on port 8000.`,
       "BACKEND_UNREACHABLE",
       503
     );
   } finally {
     window.clearTimeout(timer);
   }
+}
+
+export interface StreamTutorCallbacks {
+  onDelta: (
+    delta: string,
+    provider: TutorProviderId,
+    model: string
+  ) => void;
+  onDone: (payload: TutorChatResponsePayload) => void;
 }
 
 export const codeflowApi = {
@@ -103,5 +121,160 @@ export const codeflowApi = {
         },
       }),
     });
+  },
+
+  async getTutorProviders(): Promise<TutorProvidersStatusResponse> {
+    return requestJson<TutorProvidersStatusResponse>("/api/tutor/providers", {
+      method: "GET",
+    });
+  },
+
+  async getDsaTopics(): Promise<DSATopicGuide[]> {
+    return requestJson<DSATopicGuide[]>("/api/tutor/dsa-topics", {
+      method: "GET",
+    });
+  },
+
+  async listTutorConversations(): Promise<TutorConversationSummary[]> {
+    return requestJson<TutorConversationSummary[]>("/api/tutor/conversations", {
+      method: "GET",
+    });
+  },
+
+  async getTutorConversation(
+    conversationId: string
+  ): Promise<TutorConversationDetail> {
+    return requestJson<TutorConversationDetail>(
+      `/api/tutor/conversations/${encodeURIComponent(conversationId)}`,
+      { method: "GET" }
+    );
+  },
+
+  async deleteTutorConversation(
+    conversationId: string
+  ): Promise<{ deleted: boolean }> {
+    return requestJson<{ deleted: boolean }>(
+      `/api/tutor/conversations/${encodeURIComponent(conversationId)}`,
+      { method: "DELETE" }
+    );
+  },
+
+  async sendTutorChat(
+    payload: TutorChatRequestPayload
+  ): Promise<TutorChatResponsePayload> {
+    return requestJson<TutorChatResponsePayload>("/api/tutor/chat", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async streamTutorChat(
+    payload: TutorChatRequestPayload,
+    callbacks: StreamTutorCallbacks
+  ): Promise<void> {
+    const controller = new AbortController();
+    const timer = window.setTimeout(
+      () => controller.abort(),
+      API_CONFIG.timeoutMs
+    );
+
+    try {
+      const response = await fetch(`${API_CONFIG.baseUrl}/api/tutor/chat/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        let detail = `Tutor service returned HTTP ${response.status}`;
+        try {
+          const errBody = (await response.json()) as { detail?: unknown };
+          if (typeof errBody.detail === "string") {
+            detail = errBody.detail;
+          }
+        } catch {
+          // ignore
+        }
+        throw new ApiClientError(detail, "TUTOR_HTTP_ERROR", response.status);
+      }
+
+      if (!response.body) {
+        const fallback = await codeflowApi.sendTutorChat(payload);
+        callbacks.onDone(fallback);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let receivedDone = false;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line.startsWith("data:")) continue;
+          const jsonStr = line.slice(5).trim();
+          if (!jsonStr) continue;
+
+          const event = JSON.parse(jsonStr) as {
+            type: "delta" | "done" | "error";
+            delta?: string;
+            provider?: TutorProviderId;
+            model?: string;
+            code?: string;
+            message?: unknown;
+            conversation_id?: string;
+            used_fallback?: boolean;
+            fallback_reason?: string | null;
+            suggested_questions?: string[];
+          };
+
+          if (event.type === "delta" && event.delta) {
+            callbacks.onDelta(
+              event.delta,
+              event.provider ?? payload.provider,
+              event.model ?? ""
+            );
+          } else if (event.type === "error") {
+            throw new ApiClientError(
+              typeof event.message === "string"
+                ? event.message
+                : "AI Tutor provider error.",
+              event.code ?? "PROVIDER_ERROR",
+              502
+            );
+          } else if (event.type === "done" && event.conversation_id) {
+            receivedDone = true;
+            callbacks.onDone({
+              conversation_id: event.conversation_id,
+              message: event.message as TutorChatResponsePayload["message"],
+              provider: event.provider ?? payload.provider,
+              model: event.model ?? "",
+              used_fallback: Boolean(event.used_fallback),
+              fallback_reason: event.fallback_reason ?? null,
+              suggested_questions: event.suggested_questions ?? [],
+            });
+          }
+        }
+      }
+
+      if (!receivedDone) {
+        const fallback = await codeflowApi.sendTutorChat(payload);
+        callbacks.onDone(fallback);
+      }
+    } finally {
+      window.clearTimeout(timer);
+    }
   },
 };

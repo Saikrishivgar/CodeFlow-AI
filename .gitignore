@@ -29,9 +29,13 @@ next-env.d.ts
 
 # python backend
 backend/.venv/
+backend/.data/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
 
 # copied local monaco static assets
 /public/monaco/

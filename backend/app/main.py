@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router as execution_router
+from app.api.tutor_routes import router as tutor_router
 from app.core.config import settings
 from app.execution.runner import execution_runner
 
@@ -44,11 +45,12 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=False,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Accept"],
     )
 
     app.include_router(execution_router)
+    app.include_router(tutor_router)
     return app
 
 

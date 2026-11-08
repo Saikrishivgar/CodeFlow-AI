@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspaceStore } from "@/store/use-workspace-store";
+import { useTutorStore } from "@/store/use-tutor-store";
 import { useProjectStore } from "@/store/use-project-store";
 import { useHydrated } from "@/hooks/use-hydrated";
 
@@ -29,13 +30,17 @@ export function CodeEditorPane({ onSaveShortcut }: CodeEditorPaneProps) {
 
   const sourceCode = useWorkspaceStore((s) => s.sourceCode);
   const editorFontSize = useWorkspaceStore((s) => s.editorFontSize);
+  const selectedLineStart = useWorkspaceStore((s) => s.selectedLineStart);
+  const selectedLineEnd = useWorkspaceStore((s) => s.selectedLineEnd);
   const traceResult = useWorkspaceStore((s) => s.traceResult);
   const currentStepIndex = useWorkspaceStore((s) => s.currentStepIndex);
   const setSourceCode = useWorkspaceStore((s) => s.setSourceCode);
+  const setSelectedLines = useWorkspaceStore((s) => s.setSelectedLines);
   const runExecution = useWorkspaceStore((s) => s.runExecution);
   const stepForward = useWorkspaceStore((s) => s.stepForward);
   const stepBackward = useWorkspaceStore((s) => s.stepBackward);
   const resetExecution = useWorkspaceStore((s) => s.resetExecution);
+  const askTutor = useTutorStore((s) => s.askTutor);
 
   const lineNumbersPref = useProjectStore((s) => s.preferences.lineNumbers);
 
@@ -215,6 +220,13 @@ export function CodeEditorPane({ onSaveShortcut }: CodeEditorPaneProps) {
       actionsRef.current.onSaveShortcut();
     });
 
+    editor.onDidChangeCursorSelection((ev) => {
+      const sel = ev.selection;
+      useWorkspaceStore
+        .getState()
+        .setSelectedLines(sel.startLineNumber, sel.endLineNumber);
+    });
+
     // Ensure editor buffer matches latest store sourceCode if updated while AMD loader initialized
     const latestSource = useWorkspaceStore.getState().sourceCode;
     if (editor.getValue() !== latestSource) {
@@ -286,6 +298,29 @@ export function CodeEditorPane({ onSaveShortcut }: CodeEditorPaneProps) {
               </span>
             </Badge>
           )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            data-testid="editor-explain-line-btn"
+            onClick={() => {
+              if (currentStep && selectedLineStart === 1 && selectedLineEnd === 1) {
+                setSelectedLines(currentStep.line, currentStep.line);
+              }
+              void askTutor({ action: "explain_line" });
+            }}
+            className="h-6 gap-1 px-2 text-[11px] text-accent-violet hover:bg-accent-violet/10 hover:text-accent-violet"
+            title="Ask AI Tutor to explain the selected line(s)"
+          >
+            <Sparkles className="h-3 w-3" />
+            <span>
+              Explain{" "}
+              {selectedLineStart === selectedLineEnd
+                ? `L${selectedLineStart}`
+                : `L${selectedLineStart}–L${selectedLineEnd}`}
+            </span>
+          </Button>
 
           <Button
             type="button"

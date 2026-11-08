@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   SkipBack,
   SkipForward,
+  Sparkles,
   Type,
   WifiOff,
 } from "lucide-react";
@@ -53,6 +54,7 @@ import {
   useWorkspaceStore,
   type WorkspaceStatus,
 } from "@/store/use-workspace-store";
+import { useTutorStore } from "@/store/use-tutor-store";
 import type { PlaybackSpeed } from "@/types/api";
 import type { WorkspaceViewMode } from "@/types/visualizer";
 import { cn } from "@/lib/utils";
@@ -132,6 +134,8 @@ export function WorkspaceToolbar({ onSaveProject }: WorkspaceToolbarProps) {
   const setEditorFontSize = useWorkspaceStore((s) => s.setEditorFontSize);
   const setViewMode = useWorkspaceStore((s) => s.setViewMode);
   const checkBackendHealth = useWorkspaceStore((s) => s.checkBackendHealth);
+  const isTutorOpen = useTutorStore((s) => s.isOpen);
+  const toggleTutorOpen = useTutorStore((s) => s.toggleTutorOpen);
 
   const [editingName, setEditingName] = React.useState(false);
   const [draftName, setDraftName] = React.useState(projectName);
@@ -600,6 +604,25 @@ export function WorkspaceToolbar({ onSaveProject }: WorkspaceToolbarProps) {
               );
             })}
           </div>
+
+          {/* AI Tutor Dock Toggle Button (Phase 4) */}
+          <Button
+            type="button"
+            variant={isTutorOpen ? "default" : "secondary"}
+            size="xs"
+            onClick={toggleTutorOpen}
+            data-testid="workspace-tutor-toggle"
+            aria-pressed={isTutorOpen}
+            className={cn(
+              "h-7 gap-1.5 px-2.5 text-xs font-medium",
+              isTutorOpen
+                ? "bg-accent-violet text-white hover:bg-accent-violet/90"
+                : "border border-accent-violet/30 bg-accent-violet/10 text-accent-violet hover:bg-accent-violet/20"
+            )}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>AI Tutor</span>
+          </Button>
 
           {/* Execution Status Pill */}
           <Badge

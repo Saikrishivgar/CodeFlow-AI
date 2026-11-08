@@ -11,9 +11,11 @@ import { ExplanationPanel } from "@/components/workspace/explanation-panel";
 import { VariableInspector } from "@/components/workspace/variable-inspector";
 import { OutputPanel } from "@/components/workspace/output-panel";
 import { VisualizerPanel } from "@/components/visualizer/VisualizerPanel";
+import { AITutorPanel } from "@/components/tutor/AITutorPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SAMPLE_PROGRAMS } from "@/lib/data/samples";
 import { useWorkspaceStore } from "@/store/use-workspace-store";
+import { useTutorStore } from "@/store/use-tutor-store";
 import { useProjectStore } from "@/store/use-project-store";
 import { useToastStore } from "@/store/use-toast-store";
 import { useHydrated } from "@/hooks/use-hydrated";
@@ -37,6 +39,8 @@ function WorkspaceIDEContent() {
   const playbackSpeed = useWorkspaceStore((s) => s.playbackSpeed);
   const viewMode = useWorkspaceStore((s) => s.viewMode);
   const splitRatio = useWorkspaceStore((s) => s.splitRatio);
+  const isTutorOpen = useTutorStore((s) => s.isOpen);
+  const setTutorOpen = useTutorStore((s) => s.setTutorOpen);
 
   const loadSampleProgram = useWorkspaceStore((s) => s.loadSampleProgram);
   const loadSavedProject = useWorkspaceStore((s) => s.loadSavedProject);
@@ -257,10 +261,15 @@ function WorkspaceIDEContent() {
             <OutputPanel />
           </div>
 
-          {/* Right Column: Explanation + Variable Inspector */}
-          <div className="flex min-w-0 flex-col gap-3 lg:min-h-0">
+          {/* Right Column: Explanation + Variable Inspector + Optional AI Tutor */}
+          <div className="flex min-w-0 flex-col gap-3 overflow-y-auto lg:min-h-0">
             <ExplanationPanel />
             <VariableInspector />
+            {isTutorOpen && (
+              <div className="min-h-[420px] flex-1">
+                <AITutorPanel onClose={() => setTutorOpen(false)} />
+              </div>
+            )}
           </div>
         </main>
       ) : viewMode === "visualize" ? (
@@ -273,11 +282,16 @@ function WorkspaceIDEContent() {
             <VisualizerPanel />
           </div>
 
-          {/* Right Column: Step Explanation + Variable Inspector + Output Dock */}
+          {/* Right Column: Step Explanation + Variable Inspector + Output Dock + Optional AI Tutor */}
           <div className="flex min-w-0 flex-col gap-3 overflow-y-auto lg:min-h-0">
             <ExplanationPanel />
             <VariableInspector />
             <OutputPanel />
+            {isTutorOpen && (
+              <div className="min-h-[420px]">
+                <AITutorPanel onClose={() => setTutorOpen(false)} />
+              </div>
+            )}
           </div>
         </main>
       ) : (
@@ -289,7 +303,9 @@ function WorkspaceIDEContent() {
           {/* Left Pane: Monaco Code Editor + Console Output Dock */}
           <div
             style={
-              { "--split-left": `${splitRatio}%` } as React.CSSProperties
+              {
+                "--split-left": `${isTutorOpen ? Math.min(38, splitRatio) : splitRatio}%`,
+              } as React.CSSProperties
             }
             className="flex min-w-0 flex-col gap-3 lg:min-h-0 lg:w-[var(--split-left)] lg:shrink-0"
           >
@@ -325,17 +341,27 @@ function WorkspaceIDEContent() {
             <GripVertical className="h-4 w-4 text-subtle-foreground transition-colors group-hover:text-primary" />
           </div>
 
-          {/* Right Pane: Interactive Data Structure Visualizer + Explanation & Variable Inspector */}
+          {/* Center/Right Pane: Interactive Data Structure Visualizer + Explanation & Variable Inspector */}
           <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto lg:min-h-0">
             <div className="flex min-h-[360px] flex-[1.35] flex-col">
               <VisualizerPanel />
             </div>
 
-            <div className="grid min-h-[240px] flex-1 gap-3 xl:grid-cols-[minmax(250px,0.9fr)_minmax(290px,1.1fr)]">
+            <div className="grid min-h-[240px] flex-1 gap-3 xl:grid-cols-[minmax(220px,0.9fr)_minmax(240px,1.1fr)]">
               <ExplanationPanel />
               <VariableInspector />
             </div>
           </div>
+
+          {/* Docked AI Tutor Panel (Phase 4) */}
+          {isTutorOpen && (
+            <div
+              className="flex min-h-[420px] w-full flex-col lg:min-h-0 lg:w-[370px] lg:shrink-0 xl:w-[400px]"
+              data-testid="workspace-tutor-dock"
+            >
+              <AITutorPanel onClose={() => setTutorOpen(false)} />
+            </div>
+          )}
         </main>
       )}
     </div>

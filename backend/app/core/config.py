@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 @dataclass(frozen=True)
 class BackendSettings:
-    app_name: str = "CODEFLOW AI Execution Engine"
-    version: str = "0.2.0"
+    app_name: str = "CODEFLOW AI Execution & Tutor Engine"
+    version: str = "0.4.0"
     host: str = os.getenv("CODEFLOW_BACKEND_HOST", "127.0.0.1")
     port: int = int(os.getenv("CODEFLOW_BACKEND_PORT", "8000"))
 
@@ -30,6 +31,36 @@ class BackendSettings:
     max_container_items: int = 64
     max_serialize_depth: int = 18
 
+    # Phase 4 — AI Tutor Provider Settings (Server-Side Only)
+    ai_default_provider: str = os.getenv("CODEFLOW_AI_DEFAULT_PROVIDER", "gemini")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    gemini_api_base_url: str = os.getenv(
+        "GEMINI_API_BASE_URL",
+        "https://generativelanguage.googleapis.com/v1beta",
+    )
+
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    openai_api_base_url: str = os.getenv(
+        "OPENAI_API_BASE_URL",
+        "https://api.openai.com/v1",
+    )
+
+    ai_timeout_seconds: float = float(
+        os.getenv("CODEFLOW_AI_TIMEOUT_SECONDS", "25.0")
+    )
+    ai_max_context_chars: int = int(
+        os.getenv("CODEFLOW_AI_MAX_CONTEXT_CHARS", "18000")
+    )
+    ai_rate_limit_per_minute: int = int(
+        os.getenv("CODEFLOW_AI_RATE_LIMIT_PER_MINUTE", "30")
+    )
+    tutor_db_path: str = os.getenv(
+        "CODEFLOW_TUTOR_DB_PATH",
+        str(Path(__file__).resolve().parents[2] / ".data" / "tutor_conversations.db"),
+    )
+
     cors_origins: list[str] = field(
         default_factory=lambda: [
             origin.strip()
@@ -43,4 +74,3 @@ class BackendSettings:
 
 
 settings = BackendSettings()
-

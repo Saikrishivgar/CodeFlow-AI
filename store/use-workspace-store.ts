@@ -33,6 +33,8 @@ interface WorkspaceState {
   isDirty: boolean;
 
   editorFontSize: number;
+  selectedLineStart: number;
+  selectedLineEnd: number;
   status: WorkspaceStatus;
   traceResult: ExecuteResponsePayload | null;
   networkError: string | null;
@@ -53,6 +55,7 @@ interface WorkspaceState {
   setSourceCode: (code: string) => void;
   setProjectName: (name: string) => void;
   setEditorFontSize: (size: number) => void;
+  setSelectedLines: (start: number, end: number) => void;
   setActiveBottomTab: (tab: BottomDockTab) => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
   setViewMode: (mode: WorkspaceViewMode) => void;
@@ -86,6 +89,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       isDirty: false,
 
       editorFontSize: 13,
+      selectedLineStart: 1,
+      selectedLineEnd: 1,
       status: "idle",
       traceResult: null,
       networkError: null,
@@ -121,6 +126,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setEditorFontSize: (size) =>
         set({
           editorFontSize: Math.min(18, Math.max(12, size)),
+        }),
+
+      setSelectedLines: (start, end) =>
+        set({
+          selectedLineStart: Math.max(1, Math.min(start, end)),
+          selectedLineEnd: Math.max(1, Math.max(start, end)),
         }),
 
       setActiveBottomTab: (tab) => set({ activeBottomTab: tab }),

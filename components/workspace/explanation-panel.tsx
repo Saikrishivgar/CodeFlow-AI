@@ -4,19 +4,25 @@ import * as React from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  Bug,
   CornerDownLeft,
+  HelpCircle,
   Lightbulb,
   Play,
   Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useWorkspaceStore } from "@/store/use-workspace-store";
+import { useTutorStore } from "@/store/use-tutor-store";
 
 export function ExplanationPanel() {
   const status = useWorkspaceStore((s) => s.status);
   const traceResult = useWorkspaceStore((s) => s.traceResult);
   const networkError = useWorkspaceStore((s) => s.networkError);
   const currentStepIndex = useWorkspaceStore((s) => s.currentStepIndex);
+  const askTutor = useTutorStore((s) => s.askTutor);
+  const isStreaming = useTutorStore((s) => s.isStreaming);
 
   const steps = traceResult?.steps ?? [];
   const currentStep =
@@ -119,12 +125,68 @@ export function ExplanationPanel() {
                 ))}
               </div>
             )}
+
+            {/* Quick AI Tutor Triggers */}
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-border-subtle pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="xs"
+                disabled={isStreaming}
+                data-testid="explanation-ask-step-btn"
+                onClick={() => void askTutor({ action: "explain_step" })}
+                className="h-6 gap-1 px-2 text-[11px]"
+              >
+                <Sparkles className="h-3 w-3 text-accent-violet" />
+                <span>AI Explain Step</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                disabled={isStreaming}
+                data-testid="explanation-ask-why-btn"
+                onClick={() => void askTutor({ action: "explain_why" })}
+                className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                <HelpCircle className="h-3 w-3 text-primary" />
+                <span>Why?</span>
+              </Button>
+              {errorDetail && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="xs"
+                  disabled={isStreaming}
+                  data-testid="explanation-debug-error-btn"
+                  onClick={() => void askTutor({ action: "debug_error" })}
+                  className="h-6 gap-1 px-2 text-[11px]"
+                >
+                  <Bug className="h-3 w-3" />
+                  <span>Debug Error</span>
+                </Button>
+              )}
+            </div>
           </div>
         ) : errorDetail ? (
-          <div className="space-y-1.5 rounded-lg border border-accent-rose/30 bg-accent-rose/10 p-3 text-xs">
-            <div className="flex items-center gap-1.5 font-semibold text-accent-rose">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              <span>{errorDetail.friendly_title}</span>
+          <div className="space-y-2 rounded-lg border border-accent-rose/30 bg-accent-rose/10 p-3 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 font-semibold text-accent-rose">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>{errorDetail.friendly_title}</span>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                size="xs"
+                disabled={isStreaming}
+                data-testid="explanation-debug-error-btn"
+                onClick={() => void askTutor({ action: "debug_error" })}
+                className="h-6 gap-1 px-2 text-[11px]"
+              >
+                <Bug className="h-3 w-3" />
+                <span>AI Debug Error</span>
+              </Button>
             </div>
             <p className="leading-relaxed text-foreground/90">
               {errorDetail.friendly_explanation}
