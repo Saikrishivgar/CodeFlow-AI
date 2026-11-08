@@ -90,8 +90,8 @@ class ValueSerializer:
     def __init__(
         self,
         identity_tracker: ObjectIdentityTracker,
-        max_items: int = 50,
-        max_depth: int = 5,
+        max_items: int = 64,
+        max_depth: int = 18,
     ) -> None:
         self._tracker = identity_tracker
         self._max_items = max_items
@@ -180,6 +180,7 @@ class ValueSerializer:
                     kind="object",
                     type_name=type_name,
                     display=_safe_short_repr(value, type_name),
+                    object_id=self._tracker.get_ref_id(value),
                     truncated=True,
                 )
 
@@ -283,13 +284,24 @@ class ValueSerializer:
                 )
 
             # 7. Custom User Class Instances (e.g., TreeNode, ListNode)
-            if hasattr(value, "__dict__"):
+            if hasattr(value, "__dict__") or hasattr(value, "__slots__"):
                 ref_id = self._tracker.get_ref_id(value)
-                raw_attrs = {
-                    k: v
-                    for k, v in vars(value).items()
-                    if not k.startswith("__")
-                }
+                raw_attrs: dict[str, Any] = {}
+                if hasattr(value, "__dict__"):
+                    raw_attrs.update(
+                        {
+                            k: v
+                            for k, v in vars(value).items()
+                            if not k.startswith("__")
+                        }
+                    )
+                if hasattr(value, "__slots__"):
+                    slots = getattr(value, "__slots__", ())
+                    if isinstance(slots, str):
+                        slots = (slots,)
+                    for slot_name in slots:
+                        if not slot_name.startswith("__") and hasattr(value, slot_name):
+                            raw_attrs[slot_name] = getattr(value, slot_name)
                 attr_entries: list[KeyValueEntry] = []
                 for idx, (k, v) in enumerate(raw_attrs.items()):
                     if idx >= self._max_items:

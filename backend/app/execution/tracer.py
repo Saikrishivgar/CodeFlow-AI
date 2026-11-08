@@ -75,8 +75,8 @@ class PythonExecutionTracer:
         self,
         max_steps: int = 500,
         max_output_bytes: int = 32768,
-        max_container_items: int = 50,
-        max_serialize_depth: int = 5,
+        max_container_items: int = 64,
+        max_serialize_depth: int = 18,
         max_recursion_depth: int = 90,
     ) -> None:
         self.max_steps = max_steps

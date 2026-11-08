@@ -5,9 +5,11 @@ import Link from "next/link";
 import {
   ArrowLeft,
   BookOpen,
+  Boxes,
   Check,
   ChevronDown,
   Code2,
+  Columns2,
   FastForward,
   Keyboard,
   Loader2,
@@ -52,6 +54,7 @@ import {
   type WorkspaceStatus,
 } from "@/store/use-workspace-store";
 import type { PlaybackSpeed } from "@/types/api";
+import type { WorkspaceViewMode } from "@/types/visualizer";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_CATEGORIES: SampleCategory[] = ["Python Basics", "DSA", "Advanced"];
@@ -114,6 +117,7 @@ export function WorkspaceToolbar({ onSaveProject }: WorkspaceToolbarProps) {
   const isPlaying = useWorkspaceStore((s) => s.isPlaying);
   const playbackSpeed = useWorkspaceStore((s) => s.playbackSpeed);
   const editorFontSize = useWorkspaceStore((s) => s.editorFontSize);
+  const viewMode = useWorkspaceStore((s) => s.viewMode);
   const backendStatus = useWorkspaceStore((s) => s.backendStatus);
   const backendHealth = useWorkspaceStore((s) => s.backendHealth);
 
@@ -126,6 +130,7 @@ export function WorkspaceToolbar({ onSaveProject }: WorkspaceToolbarProps) {
   const setPlaybackSpeed = useWorkspaceStore((s) => s.setPlaybackSpeed);
   const resetExecution = useWorkspaceStore((s) => s.resetExecution);
   const setEditorFontSize = useWorkspaceStore((s) => s.setEditorFontSize);
+  const setViewMode = useWorkspaceStore((s) => s.setViewMode);
   const checkBackendHealth = useWorkspaceStore((s) => s.checkBackendHealth);
 
   const [editingName, setEditingName] = React.useState(false);
@@ -262,7 +267,7 @@ export function WorkspaceToolbar({ onSaveProject }: WorkspaceToolbarProps) {
                   Sample Program Library
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  22 tracer-verified Python 3.12 programs
+                  {SAMPLE_PROGRAMS.length} tracer-verified Python 3.12 programs
                 </p>
               </div>
               <DropdownMenuSeparator />
@@ -536,8 +541,66 @@ export function WorkspaceToolbar({ onSaveProject }: WorkspaceToolbarProps) {
           </Tooltip>
         </div>
 
-        {/* RIGHT CLUSTER: Status Badge, Sandbox Health, Font Size, Shortcuts, Theme */}
-        <div className="flex items-center gap-1.5">
+        {/* RIGHT CLUSTER: View Mode Switcher, Status Badge, Sandbox Health, Font Size, Shortcuts, Theme */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* View Mode Segmented Switcher (Part 12: Code View | Split View | Visualisation View) */}
+          <div
+            className="inline-flex items-center rounded-lg border border-border bg-surface-2/80 p-0.5"
+            role="group"
+            aria-label="Workspace view mode"
+            data-testid="workspace-view-mode-switcher"
+          >
+            {(
+              [
+                { id: "code", label: "Code View", shortLabel: "Code", icon: Code2 },
+                {
+                  id: "split",
+                  label: "Split View",
+                  shortLabel: "Split",
+                  icon: Columns2,
+                },
+                {
+                  id: "visualize",
+                  label: "Visualisation View",
+                  shortLabel: "Visual",
+                  icon: Boxes,
+                },
+              ] as {
+                id: WorkspaceViewMode;
+                label: string;
+                shortLabel: string;
+                icon: React.ComponentType<{ className?: string }>;
+              }[]
+            ).map((mode) => {
+              const Icon = mode.icon;
+              const isActive = viewMode === mode.id;
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setViewMode(mode.id)}
+                  data-testid={`view-mode-${mode.id}`}
+                  title={mode.label}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "inline-flex h-6 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition-all",
+                    isActive
+                      ? "bg-surface-1 text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "h-3 w-3",
+                      isActive ? "text-primary" : "text-muted-foreground"
+                    )}
+                  />
+                  <span className="hidden sm:inline">{mode.shortLabel}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Execution Status Pill */}
           <Badge
             variant={

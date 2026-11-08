@@ -7,6 +7,7 @@ import type {
   ExecuteResponsePayload,
   PlaybackSpeed,
 } from "@/types/api";
+import type { WorkspaceViewMode } from "@/types/visualizer";
 import {
   DEFAULT_WORKSPACE_SAMPLE,
   type SampleProgram,
@@ -40,6 +41,12 @@ interface WorkspaceState {
   playbackSpeed: PlaybackSpeed;
   activeBottomTab: BottomDockTab;
 
+  viewMode: WorkspaceViewMode;
+  selectedStructureId: string | null;
+  learningModeOpen: boolean;
+  showLegend: boolean;
+  splitRatio: number;
+
   backendStatus: BackendServiceStatus;
   backendHealth: BackendHealthResponse | null;
 
@@ -48,6 +55,11 @@ interface WorkspaceState {
   setEditorFontSize: (size: number) => void;
   setActiveBottomTab: (tab: BottomDockTab) => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
+  setViewMode: (mode: WorkspaceViewMode) => void;
+  setSelectedStructureId: (id: string | null) => void;
+  setLearningModeOpen: (open: boolean) => void;
+  setShowLegend: (show: boolean) => void;
+  setSplitRatio: (ratio: number) => void;
 
   loadSampleProgram: (sample: SampleProgram) => void;
   loadSavedProject: (project: CodeProject) => void;
@@ -82,6 +94,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       playbackSpeed: 1,
       activeBottomTab: "output",
 
+      viewMode: "split",
+      selectedStructureId: null,
+      learningModeOpen: false,
+      showLegend: true,
+      splitRatio: 45,
+
       backendStatus: "checking",
       backendHealth: null,
 
@@ -109,6 +127,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
 
+      setViewMode: (mode) => set({ viewMode: mode }),
+
+      setSelectedStructureId: (id) => set({ selectedStructureId: id }),
+
+      setLearningModeOpen: (open) => set({ learningModeOpen: open }),
+
+      setShowLegend: (show) => set({ showLegend: show }),
+
+      setSplitRatio: (ratio) =>
+        set({
+          splitRatio: Math.min(68, Math.max(30, Math.round(ratio))),
+        }),
+
       loadSampleProgram: (sample) =>
         set({
           projectName: sample.title,
@@ -123,6 +154,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           currentStepIndex: 0,
           isPlaying: false,
           activeBottomTab: "output",
+          selectedStructureId: null,
         }),
 
       loadSavedProject: (project) =>
@@ -139,6 +171,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           currentStepIndex: 0,
           isPlaying: false,
           activeBottomTab: "output",
+          selectedStructureId: null,
         }),
 
       markSavedAsProject: (projectId, name) =>
@@ -327,6 +360,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           isPlaying: false,
           lastExecutedCode: null,
           activeBottomTab: "output",
+          selectedStructureId: null,
         }),
     }),
     {
@@ -335,6 +369,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       partialize: (state) => ({
         editorFontSize: state.editorFontSize,
         playbackSpeed: state.playbackSpeed,
+        viewMode: state.viewMode,
+        learningModeOpen: state.learningModeOpen,
+        showLegend: state.showLegend,
+        splitRatio: state.splitRatio,
       }),
     }
   )

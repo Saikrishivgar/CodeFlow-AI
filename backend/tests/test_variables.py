@@ -135,3 +135,41 @@ def test_nested_structures_sets_tuples_and_custom_objects():
     assert visited_var is not None and visited_var.structured.kind == "set"
     assert coords_var is not None and coords_var.var_type == "tuple"
 
+
+def test_deep_linked_list_and_slots_object_serialization():
+    code = (
+        "class SlotNode:\n"
+        "    __slots__ = ('val', 'next')\n"
+        "    def __init__(self, val):\n"
+        "        self.val = val\n"
+        "        self.next = None\n"
+        "\n"
+        "head = SlotNode(0)\n"
+        "curr = head\n"
+        "for i in range(1, 10):\n"
+        "    curr.next = SlotNode(i)\n"
+        "    curr = curr.next\n"
+    )
+    payload = PythonExecutionTracer().execute(code)
+    assert payload.status == "completed"
+
+    final_step = payload.steps[-1]
+    head_var = _get_global(final_step, "head")
+    assert head_var is not None
+    assert head_var.var_type == "SlotNode"
+    assert head_var.structured.object_id is not None
+
+    # Walk serialized chain at least 8 levels deep (previously truncated at max_depth=5)
+    cursor = head_var.structured
+    values = []
+    while cursor is not None and cursor.attributes:
+        attr_map = {a.key: a.value for a in cursor.attributes}
+        if "val" in attr_map:
+            values.append(attr_map["val"].display)
+        nxt = attr_map.get("next")
+        cursor = nxt if nxt and nxt.kind == "object" and not nxt.truncated else None
+
+    assert len(values) == 10
+    assert values == [str(i) for i in range(10)]
+
+

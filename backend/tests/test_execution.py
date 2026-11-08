@@ -23,9 +23,9 @@ def _load_frontend_sample_snippets() -> list[tuple[str, str]]:
     return [(m.group(1), m.group(2)) for m in pattern.finditer(raw)]
 
 
-def test_all_22_workspace_sample_programs_detected():
+def test_all_workspace_sample_programs_detected():
     samples = _load_frontend_sample_snippets()
-    assert len(samples) == 22
+    assert len(samples) == 29
 
 
 @pytest.mark.parametrize(

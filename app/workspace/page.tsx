@@ -3,12 +3,14 @@
 import * as React from "react";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { GripVertical } from "lucide-react";
 import { WorkspaceToolbar } from "@/components/workspace/workspace-toolbar";
 import { ExecutionTimeline } from "@/components/workspace/execution-timeline";
 import { CodeEditorPane } from "@/components/workspace/code-editor-pane";
 import { ExplanationPanel } from "@/components/workspace/explanation-panel";
 import { VariableInspector } from "@/components/workspace/variable-inspector";
 import { OutputPanel } from "@/components/workspace/output-panel";
+import { VisualizerPanel } from "@/components/visualizer/VisualizerPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SAMPLE_PROGRAMS } from "@/lib/data/samples";
 import { useWorkspaceStore } from "@/store/use-workspace-store";
@@ -33,6 +35,8 @@ function WorkspaceIDEContent() {
   const sourceCode = useWorkspaceStore((s) => s.sourceCode);
   const isPlaying = useWorkspaceStore((s) => s.isPlaying);
   const playbackSpeed = useWorkspaceStore((s) => s.playbackSpeed);
+  const viewMode = useWorkspaceStore((s) => s.viewMode);
+  const splitRatio = useWorkspaceStore((s) => s.splitRatio);
 
   const loadSampleProgram = useWorkspaceStore((s) => s.loadSampleProgram);
   const loadSavedProject = useWorkspaceStore((s) => s.loadSavedProject);
@@ -42,6 +46,10 @@ function WorkspaceIDEContent() {
   const stepForward = useWorkspaceStore((s) => s.stepForward);
   const stepBackward = useWorkspaceStore((s) => s.stepBackward);
   const resetExecution = useWorkspaceStore((s) => s.resetExecution);
+  const setSplitRatio = useWorkspaceStore((s) => s.setSplitRatio);
+
+  const splitContainerRef = React.useRef<HTMLDivElement>(null);
+  const [isDraggingSplit, setIsDraggingSplit] = React.useState(false);
 
   // Check FastAPI health on mount
   React.useEffect(() => {
@@ -57,7 +65,6 @@ function WorkspaceIDEContent() {
     const queryKey = `${projectParam ?? ""}|${sampleParam ?? ""}`;
     if (queryKey === "|" || appliedQueryRef.current === queryKey) return;
 
-    // Static sample lookup does not depend on localStorage hydration
     if (!projectParam && sampleParam) {
       const normalizedSampleId = `sample_${sampleParam.replace(/-/g, "_")}`;
       const matchedSample = SAMPLE_PROGRAMS.find(
@@ -110,6 +117,31 @@ function WorkspaceIDEContent() {
     return () => window.clearInterval(timer);
   }, [isPlaying, playbackSpeed, stepForward]);
 
+  // Interactive drag-to-resize for Split View
+  React.useEffect(() => {
+    if (!isDraggingSplit) return;
+
+    function handleMouseMove(ev: MouseEvent) {
+      const container = splitContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setSplitRatio(pct);
+    }
+
+    function handleMouseUp() {
+      setIsDraggingSplit(false);
+    }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDraggingSplit, setSplitRatio]);
+
   // Save current editor buffer to local Project Store
   const handleSaveProject = React.useCallback(() => {
     const cleanName = projectName.trim() || "Untitled Python Visualization";
@@ -158,7 +190,6 @@ function WorkspaceIDEContent() {
   // Global window keyboard shortcuts (when focus is outside Monaco editor)
   React.useEffect(() => {
     function handleWindowKeyDown(event: KeyboardEvent) {
-      // Skip if event already originated inside Monaco textarea (Monaco handles its own commands)
       const target = event.target as HTMLElement | null;
       if (target?.closest(".monaco-editor")) return;
 
@@ -212,22 +243,101 @@ function WorkspaceIDEContent() {
       {/* Execution Timeline & Interactive Scrubber */}
       <ExecutionTimeline />
 
-      {/* Main Split Workspace */}
-      <main className="grid flex-1 gap-3 p-3 lg:min-h-0 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.95fr)]">
-        {/* Left Column: Area B (Monaco Code Editor) + Area D (Bottom Output/Trace/Errors Dock) */}
-        <div className="flex min-w-0 flex-col gap-3 lg:min-h-0">
-          <div className="min-h-[340px] flex-1 lg:min-h-0">
-            <CodeEditorPane onSaveShortcut={handleSaveProject} />
+      {/* Main Workspace Area — Supports Code View, Split View, and Visualisation View */}
+      {viewMode === "code" ? (
+        <main
+          className="grid flex-1 gap-3 p-3 lg:min-h-0 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.95fr)]"
+          data-testid="workspace-main-code"
+        >
+          {/* Left Column: Monaco Code Editor + Bottom Output/Trace/Errors Dock */}
+          <div className="flex min-w-0 flex-col gap-3 lg:min-h-0">
+            <div className="min-h-[340px] flex-1 lg:min-h-0">
+              <CodeEditorPane onSaveShortcut={handleSaveProject} />
+            </div>
+            <OutputPanel />
           </div>
-          <OutputPanel />
-        </div>
 
-        {/* Right Column: Beginner-Friendly Explanation ("What's Happening?") + Area C (Variable Inspector) */}
-        <div className="flex min-w-0 flex-col gap-3 lg:min-h-0">
-          <ExplanationPanel />
-          <VariableInspector />
-        </div>
-      </main>
+          {/* Right Column: Explanation + Variable Inspector */}
+          <div className="flex min-w-0 flex-col gap-3 lg:min-h-0">
+            <ExplanationPanel />
+            <VariableInspector />
+          </div>
+        </main>
+      ) : viewMode === "visualize" ? (
+        <main
+          className="grid flex-1 gap-3 p-3 lg:min-h-0 lg:grid-cols-[minmax(0,1.65fr)_minmax(340px,0.85fr)]"
+          data-testid="workspace-main-visualize"
+        >
+          {/* Left Hero Column: Full-Stage Data Structure & Memory Visualiser */}
+          <div className="flex min-w-0 flex-col gap-3 lg:min-h-0">
+            <VisualizerPanel />
+          </div>
+
+          {/* Right Column: Step Explanation + Variable Inspector + Output Dock */}
+          <div className="flex min-w-0 flex-col gap-3 overflow-y-auto lg:min-h-0">
+            <ExplanationPanel />
+            <VariableInspector />
+            <OutputPanel />
+          </div>
+        </main>
+      ) : (
+        <main
+          ref={splitContainerRef}
+          className="flex flex-1 flex-col gap-3 p-3 lg:min-h-0 lg:flex-row lg:gap-1.5"
+          data-testid="workspace-main-split"
+        >
+          {/* Left Pane: Monaco Code Editor + Console Output Dock */}
+          <div
+            style={
+              { "--split-left": `${splitRatio}%` } as React.CSSProperties
+            }
+            className="flex min-w-0 flex-col gap-3 lg:min-h-0 lg:w-[var(--split-left)] lg:shrink-0"
+          >
+            <div className="min-h-[320px] flex-1 lg:min-h-0">
+              <CodeEditorPane onSaveShortcut={handleSaveProject} />
+            </div>
+            <OutputPanel />
+          </div>
+
+          {/* Interactive Resizable Drag Handle (Desktop) */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize code editor and visualization panels"
+            tabIndex={0}
+            data-testid="workspace-split-resizer"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsDraggingSplit(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                setSplitRatio(splitRatio - 4);
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                setSplitRatio(splitRatio + 4);
+              }
+            }}
+            className="group hidden w-2.5 shrink-0 cursor-col-resize items-center justify-center rounded-md transition-colors hover:bg-primary/15 focus-visible:bg-primary/20 focus-visible:outline-none lg:flex"
+            title="Drag to resize panels"
+          >
+            <GripVertical className="h-4 w-4 text-subtle-foreground transition-colors group-hover:text-primary" />
+          </div>
+
+          {/* Right Pane: Interactive Data Structure Visualizer + Explanation & Variable Inspector */}
+          <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto lg:min-h-0">
+            <div className="flex min-h-[360px] flex-[1.35] flex-col">
+              <VisualizerPanel />
+            </div>
+
+            <div className="grid min-h-[240px] flex-1 gap-3 xl:grid-cols-[minmax(250px,0.9fr)_minmax(290px,1.1fr)]">
+              <ExplanationPanel />
+              <VariableInspector />
+            </div>
+          </div>
+        </main>
+      )}
     </div>
   );
 }

@@ -9,6 +9,8 @@ const badgeVariants = cva(
       variant: {
         default:
           "border-primary/25 bg-primary/12 text-primary",
+        indigo:
+          "border-primary/25 bg-primary/12 text-primary",
         secondary:
           "border-border bg-surface-2 text-muted-foreground",
         outline:

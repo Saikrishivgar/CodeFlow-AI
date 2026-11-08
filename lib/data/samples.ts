@@ -135,7 +135,7 @@ print("Small:", small_box, "| Large:", large_box)
 `,
   },
 
-  // ───────────────────────────── DSA (8) ─────────────────────────────
+  // ───────────────────────────── DSA (12) ─────────────────────────────
   {
     id: "sample_array_traversal",
     slug: "arrays",
@@ -154,6 +154,29 @@ for idx, val in enumerate(nums):
         max_val = val
 
 print("Prefix sums:", prefix_sums, "| Max:", max_val)
+`,
+  },
+  {
+    id: "sample_array_insert_delete",
+    slug: "array-insert-delete",
+    title: "Array Insertion & Deletion",
+    category: "DSA",
+    description: "Watch array indices shift on insert(), pop(), update, and in-place swap.",
+    code: `nums = [10, 20, 40, 50]
+
+# Insert 30 at index 2 (elements right of index 2 shift)
+nums.insert(2, 30)
+
+# Update element at index 0
+nums[0] = 15
+
+# Swap first and last elements in place
+nums[0], nums[-1] = nums[-1], nums[0]
+
+# Delete element at index 1 and pop tail
+removed_mid = nums.pop(1)
+removed_end = nums.pop()
+print("Final array:", nums, "| removed:", removed_mid, removed_end)
 `,
   },
   {
@@ -312,8 +335,91 @@ while queue:
 print("Processed FIFO:", completed)
 `,
   },
+  {
+    id: "sample_dictionary_operations",
+    slug: "dictionary-operations",
+    title: "Dictionary Operations",
+    category: "DSA",
+    description: "Track key insertions, value updates, lookups, and key deletion in a dict.",
+    code: `inventory: dict[str, int] = {"apples": 5, "bananas": 3}
 
-  // ─────────────────────────── ADVANCED (7) ───────────────────────────
+# Insert a new key
+inventory["cherries"] = 8
+
+# Update an existing key
+inventory["apples"] = inventory["apples"] + 4
+
+# Lookup and delete a key
+has_bananas = "bananas" in inventory
+removed_count = inventory.pop("bananas")
+print("Inventory:", inventory, "| removed bananas:", removed_count)
+`,
+  },
+  {
+    id: "sample_singly_linked_list",
+    slug: "singly-linked-list",
+    title: "Singly Linked List",
+    category: "DSA",
+    description: "Allocate ListNode objects, splice a new node in-place, and traverse .next pointers.",
+    code: `class ListNode:
+    def __init__(self, val: int, next=None):
+        self.val = val
+        self.next = next
+
+head = ListNode(10)
+second = ListNode(20)
+third = ListNode(40)
+head.next = second
+second.next = third
+
+# Splice 30 between second (20) and third (40)
+new_node = ListNode(30)
+new_node.next = second.next
+second.next = new_node
+
+# Traverse from head to None
+visited_vals: list[int] = []
+curr = head
+while curr is not None:
+    visited_vals.append(curr.val)
+    curr = curr.next
+
+print("Linked list values:", visited_vals)
+`,
+  },
+  {
+    id: "sample_doubly_linked_list",
+    slug: "doubly-linked-list",
+    title: "Doubly Linked List",
+    category: "DSA",
+    description: "Wire forward (.next) and backward (.prev) pointers across DoublyNode instances.",
+    code: `class DoublyNode:
+    def __init__(self, val: str):
+        self.val = val
+        self.prev = None
+        self.next = None
+
+head = DoublyNode("A")
+middle = DoublyNode("B")
+tail = DoublyNode("C")
+
+head.next = middle
+middle.prev = head
+middle.next = tail
+tail.prev = middle
+
+# Walk backward from tail to head using .prev
+reverse_path: list[str] = []
+curr = tail
+while curr is not None:
+    reverse_path.append(curr.val)
+    curr = curr.prev
+
+print("Reverse traversal:", reverse_path)
+`,
+  },
+
+  // ─────────────────────────── ADVANCED (10) ───────────────────────────
   {
     id: "sample_recursion",
     slug: "recursion",
@@ -486,6 +592,84 @@ def dfs(node: str) -> None:
 
 dfs("A")
 print("DFS order:", dfs_order)
+`,
+  },
+  {
+    id: "sample_binary_search_tree",
+    slug: "binary-search-tree",
+    title: "Binary Search Tree",
+    category: "Advanced",
+    description: "Insert keys into a BST and follow the O(log n) search path to locate a target.",
+    code: `class BSTNode:
+    def __init__(self, val: int, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def insert_bst(root, val: int):
+    if root is None:
+        return BSTNode(val)
+    if val < root.val:
+        root.left = insert_bst(root.left, val)
+    else:
+        root.right = insert_bst(root.right, val)
+    return root
+
+root = None
+for key in [50, 30, 70, 20, 40, 60, 80]:
+    root = insert_bst(root, key)
+
+# Search for 40 by walking left/right branches
+curr = root
+search_path: list[int] = []
+target = 40
+while curr is not None:
+    search_path.append(curr.val)
+    if target == curr.val:
+        break
+    elif target < curr.val:
+        curr = curr.left
+    else:
+        curr = curr.right
+
+print("BST search path to 40:", search_path)
+`,
+  },
+  {
+    id: "sample_min_heap",
+    slug: "min-heap",
+    title: "Min Heap",
+    category: "Advanced",
+    description: "Heapify an array, push a smaller key, and extract the minimum root with heapq.",
+    code: `import heapq
+
+min_heap = [18, 7, 25, 12, 4]
+heapq.heapify(min_heap)
+
+# Push a new minimum element (sifts up to root index 0)
+heapq.heappush(min_heap, 2)
+
+# Extract the two smallest elements in O(log n)
+first_min = heapq.heappop(min_heap)
+second_min = heapq.heappop(min_heap)
+print("Extracted:", first_min, second_min, "| Remaining heap:", min_heap)
+`,
+  },
+  {
+    id: "sample_recursion_tree",
+    slug: "recursion-tree",
+    title: "Recursion Tree",
+    category: "Advanced",
+    description: "Visualize branching recursive subcalls and return values unwinding in a call tree.",
+    code: `def climb_ways(steps_left: int) -> int:
+    if steps_left <= 1:
+        return 1
+    take_one = climb_ways(steps_left - 1)
+    take_two = climb_ways(steps_left - 2)
+    return take_one + take_two
+
+total_ways = climb_ways(4)
+print("Distinct ways to climb 4 steps:", total_ways)
 `,
   },
 ];

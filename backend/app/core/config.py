@@ -27,8 +27,8 @@ class BackendSettings:
     max_output_bytes: int = int(os.getenv("CODEFLOW_MAX_OUTPUT_BYTES", "32768"))
     max_source_chars: int = int(os.getenv("CODEFLOW_MAX_SOURCE_CHARS", "25000"))
     max_recursion_depth: int = int(os.getenv("CODEFLOW_MAX_RECURSION_DEPTH", "90"))
-    max_container_items: int = 50
-    max_serialize_depth: int = 5
+    max_container_items: int = 64
+    max_serialize_depth: int = 18
 
     cors_origins: list[str] = field(
         default_factory=lambda: [
