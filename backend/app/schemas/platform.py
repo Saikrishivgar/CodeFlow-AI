@@ -138,3 +138,4 @@ class UpdateLearningProgressRequestSchema(BaseModel):
     completed_lessons: list[str] | None = None
     completed_exercises: list[str] | None = None
     active_track_id: str | None = None
+

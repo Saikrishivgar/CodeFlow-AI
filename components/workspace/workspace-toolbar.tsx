@@ -18,8 +18,6 @@ import {
   Play,
   RotateCcw,
   Save,
-  ShieldAlert,
-  ShieldCheck,
   SkipBack,
   SkipForward,
   Sparkles,
@@ -648,9 +646,9 @@ export function WorkspaceToolbar({ onSaveProject }: WorkspaceToolbarProps) {
                 onClick={() => void checkBackendHealth()}
                 data-testid="workspace-backend-badge"
                 className={cn(
-                  "hidden h-6 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors lg:inline-flex",
+                  "hidden h-6 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors lg:inline-flex",
                   backendStatus === "connected"
-                    ? "border-border bg-surface-2 text-muted-foreground hover:text-foreground"
+                    ? "border-accent-emerald/30 bg-accent-emerald/10 text-foreground hover:bg-accent-emerald/15"
                     : backendStatus === "offline"
                     ? "border-accent-rose/35 bg-accent-rose/10 text-accent-rose"
                     : "border-border bg-surface-2 text-muted-foreground"
@@ -661,15 +659,10 @@ export function WorkspaceToolbar({ onSaveProject }: WorkspaceToolbarProps) {
                     <WifiOff className="h-3 w-3" />
                     <span>Backend Offline</span>
                   </>
-                ) : executionMode === "docker_sandbox" ? (
-                  <>
-                    <ShieldCheck className="h-3 w-3 text-accent-emerald" />
-                    <span>Docker Sandbox</span>
-                  </>
                 ) : (
                   <>
-                    <ShieldAlert className="h-3 w-3 text-accent-amber" />
-                    <span>Dev Runner</span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent-emerald animate-pulse" />
+                    <span className="font-mono text-[10.5px]">Python 3.12</span>
                   </>
                 )}
               </button>
@@ -687,11 +680,9 @@ export function WorkspaceToolbar({ onSaveProject }: WorkspaceToolbarProps) {
                 </span>
               ) : (
                 <span>
-                  <strong>Local Development Subprocess Mode</strong> (Python{" "}
-                  {backendHealth?.python_version ?? "3.12"}): isolated temp dir,
+                  <strong>Python 3.12 Execution Engine Active</strong> (
+                  {backendHealth?.execution_mode ?? "development_subprocess"}): isolated temp dir,
                   timeouts, memory/step caps, and PEP 578 audit hooks active.
-                  For local dev only — use Docker sandbox before public
-                  deployment.
                 </span>
               )}
             </TooltipContent>

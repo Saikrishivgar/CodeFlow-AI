@@ -271,3 +271,4 @@ def update_learning_progress(
 def reset_learning_progress() -> LearningProgressSchema:
     reset = workspace_store.reset_learning_progress()
     return LearningProgressSchema(**reset)
+

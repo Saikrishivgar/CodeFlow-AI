@@ -1,17 +1,23 @@
 "use client";
 
 import * as React from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowRight,
   Box,
   ChevronDown,
   ChevronRight,
   GitCommitHorizontal,
   Layers,
+  LayoutGrid,
   MinusCircle,
   PlusCircle,
   RefreshCw,
+  Table as TableIcon,
+  Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useWorkspaceStore } from "@/store/use-workspace-store";
 import { useProjectStore } from "@/store/use-project-store";
 import type {
@@ -20,6 +26,40 @@ import type {
   VariableSnapshotItem,
 } from "@/types/api";
 import { cn } from "@/lib/utils";
+
+const POINTER_NAMES = new Set([
+  "l",
+  "r",
+  "i",
+  "j",
+  "k",
+  "left",
+  "right",
+  "low",
+  "high",
+  "mid",
+  "start",
+  "end",
+  "curr",
+  "prev",
+  "next",
+  "fast",
+  "slow",
+  "ptr",
+  "p1",
+  "p2",
+]);
+
+function isPointerVariable(item: VariableSnapshotItem): boolean {
+  if (item.var_type !== "int") return false;
+  const lower = item.name.toLowerCase();
+  return (
+    POINTER_NAMES.has(lower) ||
+    lower.endsWith("_ptr") ||
+    lower.endsWith("_idx") ||
+    lower.startsWith("ptr_")
+  );
+}
 
 function isExpandableNode(node: StructuredValueNode): boolean {
   if (node.circular) return false;
@@ -150,12 +190,243 @@ function buildVariableChangeNote(
   if (item.change === "modified") {
     const prev = item.previous_repr ?? "previous value";
     return cleanStmt
-      ? `${item.name} changed from ${prev} to ${item.repr_value} because the statement ${cleanStmt} executed.`
+      ? `${item.name} changed from ${prev} to ${item.repr_value} because the statement "${cleanStmt}" executed.`
       : `${item.name} changed from ${prev} to ${item.repr_value}.`;
   }
   return null;
 }
 
+/**
+ * Visual Variable Card — animated, rich, intuitive learning presentation
+ */
+function VariableCard({
+  item,
+  sourceLine,
+  highlightMutations,
+  sharedRefIds,
+  allVariables,
+}: {
+  item: VariableSnapshotItem;
+  sourceLine: string;
+  highlightMutations: boolean;
+  sharedRefIds: Set<string>;
+  allVariables: VariableSnapshotItem[];
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+  const expandable = isExpandableNode(item.structured);
+
+  const isCreated = highlightMutations && item.change === "created";
+  const isModified = highlightMutations && item.change === "modified";
+  const objId = item.structured.object_id ?? null;
+  const isSharedAlias = objId !== null && sharedRefIds.has(objId);
+  const isPointer = isPointerVariable(item);
+
+  const changeNote = buildVariableChangeNote(item, sourceLine);
+
+  // Find pointers pointing to indices if this item is a list
+  const pointingPointers = React.useMemo(() => {
+    if (item.var_type !== "list") return [];
+    return allVariables
+      .filter((v) => isPointerVariable(v))
+      .map((v) => ({
+        name: v.name,
+        index: Number.parseInt(v.repr_value, 10),
+      }))
+      .filter((p) => !Number.isNaN(p.index));
+  }, [item.var_type, allVariables]);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18 }}
+      data-testid={`var-row-${item.scope}-${item.name}`}
+      className={cn(
+        "group relative flex flex-col gap-2 rounded-xl border p-3 transition-all shadow-sm",
+        isModified
+          ? "border-accent-amber/50 bg-gradient-to-r from-accent-amber/[0.12] via-accent-amber/[0.05] to-transparent ring-1 ring-accent-amber/40 shadow-glow-amber"
+          : isCreated
+          ? "border-accent-emerald/50 bg-gradient-to-r from-accent-emerald/[0.12] via-accent-emerald/[0.05] to-transparent ring-1 ring-accent-emerald/40"
+          : "border-border/80 bg-surface-2/40 hover:border-border hover:bg-surface-2/70"
+      )}
+    >
+      {/* Top Row: Variable Identity & Badges */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {expandable && (
+            <button
+              type="button"
+              onClick={() => setExpanded((prev) => !prev)}
+              aria-label={
+                expanded ? `Collapse ${item.name}` : `Expand ${item.name}`
+              }
+              data-testid={`var-expand-${item.name}`}
+              className="rounded p-0.5 text-muted-foreground hover:bg-surface-3 hover:text-foreground"
+            >
+              {expanded ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
+
+          <span className="font-mono text-sm font-bold tracking-tight text-foreground">
+            {item.name}
+          </span>
+
+          {/* Type Badge */}
+          <Badge
+            variant={
+              item.var_type === "int" || item.var_type === "float"
+                ? "amber"
+                : item.var_type === "str"
+                ? "emerald"
+                : item.var_type === "list"
+                ? "indigo"
+                : item.var_type === "bool"
+                ? "violet"
+                : "secondary"
+            }
+            className="px-1.5 py-0 text-[10px] font-mono"
+          >
+            {item.var_type === "list" && typeof item.structured.length === "number"
+              ? `list [${item.structured.length}]`
+              : item.var_type}
+          </Badge>
+
+          {/* Pointer Badge */}
+          {isPointer && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 py-0 font-mono text-[10px] font-bold text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+              Pointer
+            </span>
+          )}
+        </div>
+
+        {/* Change Indicator Badges */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {item.change === "created" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-emerald/20 px-2 py-0.5 font-mono text-[10px] font-bold text-accent-emerald">
+              <PlusCircle className="h-3 w-3" />
+              new
+            </span>
+          )}
+
+          {item.change === "modified" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-amber/20 px-2 py-0.5 font-mono text-[10px] font-bold text-accent-amber">
+              <Zap className="h-3 w-3" />
+              {item.previous_repr ? `was ${item.previous_repr}` : "updated"}
+            </span>
+          )}
+
+          {isSharedAlias && (
+            <span className="rounded-full border border-accent-violet/40 bg-accent-violet/15 px-2 py-0 font-mono text-[10px] text-accent-violet">
+              shared alias
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Main Value Display */}
+      <div className="pt-0.5">
+        {item.var_type === "list" &&
+        item.structured.items &&
+        item.structured.items.length > 0 &&
+        item.structured.items.length <= 16 ? (
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-end gap-1.5 overflow-x-auto py-1">
+              {item.structured.items.map((child, idx) => {
+                const pointersHere = pointingPointers.filter(
+                  (p) => p.index === idx
+                );
+                const hasPointer = pointersHere.length > 0;
+
+                return (
+                  <div key={idx} className="flex flex-col items-center">
+                    {/* Tiny Pointer Indicator */}
+                    {hasPointer ? (
+                      <span className="mb-0.5 rounded bg-primary/20 px-1 py-0 font-mono text-[9px] font-bold text-primary">
+                        {pointersHere.map((p) => p.name).join(",")}
+                      </span>
+                    ) : (
+                      <span className="mb-0.5 h-3.5" />
+                    )}
+
+                    <div
+                      className={cn(
+                        "flex min-w-[32px] items-center justify-center rounded-lg border px-2 py-1 font-mono text-xs font-bold transition-all",
+                        hasPointer
+                          ? "border-primary bg-primary/20 text-foreground ring-1 ring-primary/40 shadow-sm"
+                          : "border-border-subtle bg-surface-1 text-foreground"
+                      )}
+                    >
+                      {child.display}
+                    </div>
+                    <span className="mt-0.5 font-mono text-[9px] text-subtle-foreground">
+                      [{idx}]
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="font-mono text-sm">
+            {expandable ? (
+              <button
+                type="button"
+                onClick={() => setExpanded((prev) => !prev)}
+                className="block max-w-full truncate text-left font-semibold text-foreground hover:text-primary transition-colors"
+                title="Click to expand"
+              >
+                {item.repr_value}
+              </button>
+            ) : (
+              <span
+                className={cn(
+                  "font-bold",
+                  item.var_type === "str"
+                    ? "text-accent-emerald"
+                    : item.var_type === "int" || item.var_type === "float"
+                    ? "text-accent-amber text-base"
+                    : item.var_type === "bool" || item.var_type === "NoneType"
+                    ? "text-accent-violet"
+                    : "text-foreground"
+                )}
+              >
+                {item.repr_value}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Understandable Change Explanation */}
+      {changeNote && (
+        <div className="flex items-start gap-1.5 rounded-lg border border-border-subtle bg-surface-1/70 px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
+          <ArrowRight className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary" />
+          <span>{changeNote}</span>
+        </div>
+      )}
+
+      {/* Expanded Nested Structure */}
+      {expandable && expanded && (
+        <div
+          className="rounded-lg border border-border-subtle bg-surface-code/85 p-2.5"
+          data-testid={`var-tree-${item.name}`}
+        >
+          <StructuredValueTree node={item.structured} depth={0} />
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/**
+ * Compact Table Row — for dense table view
+ */
 function VariableRow({
   item,
   sourceLine,
@@ -312,13 +583,14 @@ function VariableRow({
   );
 }
 
-function ScopeVariableTable({
+function ScopeVariableSection({
   title,
   scopeBadge,
   variables,
   sourceLine,
   highlightMutations,
   sharedRefIds,
+  viewMode,
 }: {
   title: string;
   scopeBadge: string;
@@ -326,33 +598,69 @@ function ScopeVariableTable({
   sourceLine: string;
   highlightMutations: boolean;
   sharedRefIds: Set<string>;
+  viewMode: "cards" | "table";
 }) {
+  if (viewMode === "table") {
+    return (
+      <div className="overflow-hidden rounded-xl border border-border">
+        <div className="flex items-center justify-between border-b border-border bg-surface-2/70 px-3 py-1.5">
+          <span className="text-[11px] font-semibold text-foreground">
+            {title}
+          </span>
+          <Badge
+            variant="secondary"
+            className="px-1.5 py-0 font-mono text-[10px]"
+          >
+            {scopeBadge} · {variables.length}
+          </Badge>
+        </div>
+
+        {/* Column Headers */}
+        <div className="grid grid-cols-[minmax(88px,1.1fr)_minmax(58px,0.7fr)_minmax(110px,1.8fr)] gap-2 border-b border-border-subtle bg-surface-1 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-subtle-foreground">
+          <span>Variable</span>
+          <span>Type</span>
+          <span>Current Value</span>
+        </div>
+
+        <div className="divide-y divide-border-subtle bg-surface-1">
+          {variables.map((v) => (
+            <VariableRow
+              key={`${v.scope}-${v.name}`}
+              item={v}
+              sourceLine={sourceLine}
+              highlightMutations={highlightMutations}
+              sharedRefIds={sharedRefIds}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Visual Cards View (Default)
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <div className="flex items-center justify-between border-b border-border bg-surface-2/70 px-3 py-1.5">
-        <span className="text-[11px] font-semibold text-foreground">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
           {title}
         </span>
-        <Badge variant="secondary" className="px-1.5 py-0 font-mono text-[10px]">
-          {scopeBadge} · {variables.length}
+        <Badge
+          variant="secondary"
+          className="px-1.5 py-0 font-mono text-[10px]"
+        >
+          {variables.length} active
         </Badge>
       </div>
 
-      {/* Column Headers */}
-      <div className="grid grid-cols-[minmax(88px,1.1fr)_minmax(58px,0.7fr)_minmax(110px,1.8fr)] gap-2 border-b border-border-subtle bg-surface-1 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-subtle-foreground">
-        <span>Variable</span>
-        <span>Type</span>
-        <span>Current Value</span>
-      </div>
-
-      <div className="divide-y divide-border-subtle bg-surface-1">
+      <div className="grid grid-cols-1 gap-2.5">
         {variables.map((v) => (
-          <VariableRow
+          <VariableCard
             key={`${v.scope}-${v.name}`}
             item={v}
             sourceLine={sourceLine}
             highlightMutations={highlightMutations}
             sharedRefIds={sharedRefIds}
+            allVariables={variables}
           />
         ))}
       </div>
@@ -364,7 +672,7 @@ function DeletedVariablesCard({ items }: { items: DeletedVariableItem[] }) {
   if (items.length === 0) return null;
   return (
     <div
-      className="overflow-hidden rounded-lg border border-accent-rose/25 bg-accent-rose/[0.06]"
+      className="overflow-hidden rounded-xl border border-accent-rose/25 bg-accent-rose/[0.06]"
       data-testid="deleted-variables-section"
     >
       <div className="flex items-center justify-between border-b border-accent-rose/20 px-3 py-1.5">
@@ -404,6 +712,7 @@ const EMPTY_SNAPSHOT_VARS: VariableSnapshotItem[] = [];
 const EMPTY_DELETED_VARS: DeletedVariableItem[] = [];
 
 export function VariableInspector() {
+  const [viewMode, setViewMode] = React.useState<"cards" | "table">("cards");
   const traceResult = useWorkspaceStore((s) => s.traceResult);
   const currentStepIndex = useWorkspaceStore((s) => s.currentStepIndex);
   const highlightMutatedVariables = useProjectStore(
@@ -417,12 +726,11 @@ export function VariableInspector() {
   const isModuleFrame =
     !currentStep || currentStep.function_name === "<module>";
 
-  // In <module>, locals & globals refer to module scope (tracer puts module vars in locals and leaves globals empty or vice versa).
   const localVars = currentStep?.locals ?? EMPTY_SNAPSHOT_VARS;
   const globalVars = currentStep?.globals ?? EMPTY_SNAPSHOT_VARS;
   const deletedVars = currentStep?.deleted_variables ?? EMPTY_DELETED_VARS;
 
-  // Detect shared heap object_ids across visible variables so aliases (e.g. a = [1,2]; b = a) are clearly marked!
+  // Detect shared heap object_ids across visible variables
   const sharedRefIds = React.useMemo(() => {
     const counts = new Map<string, number>();
     for (const v of [...localVars, ...globalVars]) {
@@ -466,7 +774,10 @@ export function VariableInspector() {
 
         <div className="flex flex-wrap items-center gap-1.5">
           {createdCount > 0 && (
-            <Badge variant="emerald" className="px-1.5 py-0 font-mono text-[10px]">
+            <Badge
+              variant="emerald"
+              className="px-1.5 py-0 font-mono text-[10px]"
+            >
               +{createdCount} new
             </Badge>
           )}
@@ -491,6 +802,42 @@ export function VariableInspector() {
                 {localVars.length + globalVars.length} tracked
               </Badge>
             )}
+
+          {/* View Mode Toggle: Visual Cards vs Compact Table */}
+          <div className="ml-1 flex items-center rounded-lg border border-border bg-surface-2 p-0.5">
+            <Button
+              type="button"
+              variant={viewMode === "cards" ? "default" : "ghost"}
+              size="xs"
+              onClick={() => setViewMode("cards")}
+              className={cn(
+                "h-5 gap-1 px-1.5 text-[10.5px]",
+                viewMode === "cards"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Visual cards view"
+            >
+              <LayoutGrid className="h-3 w-3" />
+              <span className="hidden sm:inline">Cards</span>
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="xs"
+              onClick={() => setViewMode("table")}
+              className={cn(
+                "h-5 gap-1 px-1.5 text-[10.5px]",
+                viewMode === "table"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Compact table view"
+            >
+              <TableIcon className="h-3 w-3" />
+              <span className="hidden sm:inline">Table</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -506,6 +853,11 @@ export function VariableInspector() {
           </span>
           {currentStep.call_stack.map((frame, idx) => {
             const isActiveFrame = idx === currentStep.call_stack.length - 1;
+            const displayName =
+              frame.function_name === "<module>"
+                ? "Global Scope"
+                : `${frame.function_name}()`;
+
             return (
               <React.Fragment key={frame.frame_id}>
                 {idx > 0 && (
@@ -519,7 +871,7 @@ export function VariableInspector() {
                       : "bg-surface-2 text-muted-foreground"
                   )}
                 >
-                  {frame.function_name}:L{frame.line}
+                  {displayName} : L{frame.line}
                 </span>
               </React.Fragment>
             );
@@ -528,22 +880,22 @@ export function VariableInspector() {
       )}
 
       {/* Scrollable Body */}
-      <div className="flex-1 space-y-3 overflow-y-auto p-3">
+      <div className="flex-1 space-y-3.5 overflow-y-auto p-3">
         {!currentStep ? (
-          <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-2/30 p-5 text-center">
+          <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface-2/30 p-5 text-center">
             <Box className="h-6 w-6 text-subtle-foreground" />
             <p className="mt-2 text-xs font-medium text-foreground">
               No execution snapshot active
             </p>
             <p className="mt-1 max-w-xs text-[11.5px] leading-relaxed text-muted-foreground">
               Run your Python program to inspect live variable values, types,
-              mutations, and expandable lists &amp; dictionaries at every step.
+              mutations, and interactive structures at every step.
             </p>
           </div>
         ) : localVars.length === 0 &&
           globalVars.length === 0 &&
           deletedVars.length === 0 ? (
-          <div className="flex min-h-[140px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-2/30 p-4 text-center">
+          <div className="flex min-h-[140px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface-2/30 p-4 text-center">
             <p className="text-xs font-medium text-foreground">
               No user variables defined yet at Step {currentStep.step}
             </p>
@@ -553,45 +905,51 @@ export function VariableInspector() {
             </p>
           </div>
         ) : (
-          <>
+          <AnimatePresence mode="wait">
             {/* Module-level execution: show globalVars */}
             {isModuleFrame && globalVars.length > 0 && (
-              <ScopeVariableTable
-                title="Module / Global Variables"
+              <ScopeVariableSection
+                key="module-vars"
+                title="Global Variables"
                 scopeBadge="global"
                 variables={globalVars}
                 sourceLine={currentStep.source_line}
                 highlightMutations={highlightMutatedVariables}
                 sharedRefIds={sharedRefIds}
+                viewMode={viewMode}
               />
             )}
 
             {/* Function frame execution: show Local Variables first, then Global Variables */}
             {!isModuleFrame && localVars.length > 0 && (
-              <ScopeVariableTable
+              <ScopeVariableSection
+                key="local-vars"
                 title={`Local Variables · ${currentStep.function_name}()`}
                 scopeBadge="local"
                 variables={localVars}
                 sourceLine={currentStep.source_line}
                 highlightMutations={highlightMutatedVariables}
                 sharedRefIds={sharedRefIds}
+                viewMode={viewMode}
               />
             )}
 
             {!isModuleFrame && globalVars.length > 0 && (
-              <ScopeVariableTable
-                title="Global Variables (<module>)"
+              <ScopeVariableSection
+                key="function-global-vars"
+                title="Global Variables"
                 scopeBadge="global"
                 variables={globalVars}
                 sourceLine={currentStep.source_line}
                 highlightMutations={highlightMutatedVariables}
                 sharedRefIds={sharedRefIds}
+                viewMode={viewMode}
               />
             )}
 
             {/* Removed / Out-of-Scope Variables */}
             <DeletedVariablesCard items={deletedVars} />
-          </>
+          </AnimatePresence>
         )}
       </div>
     </section>

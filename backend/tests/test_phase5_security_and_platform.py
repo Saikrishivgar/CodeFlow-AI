@@ -241,3 +241,4 @@ def test_security_audit_and_persistence_rest_endpoints():
     assert "production_deployment_blocked" in audit_json
     assert len(audit_json["docker_container_flags"]) >= 8
     assert len(audit_json["worker_sandbox_controls"]) >= 5
+

@@ -265,6 +265,12 @@ export function CodeEditorPane({ onSaveShortcut }: CodeEditorPaneProps) {
     [sourceCode]
   );
 
+  const targetLine = currentStep ? currentStep.line : selectedLineStart;
+  const isMultiLineSelection = selectedLineStart !== selectedLineEnd;
+  const explainLabel = isMultiLineSelection
+    ? `L${selectedLineStart}–L${selectedLineEnd}`
+    : `L${targetLine}`;
+
   return (
     <section
       aria-label="Python Source Editor"
@@ -305,7 +311,7 @@ export function CodeEditorPane({ onSaveShortcut }: CodeEditorPaneProps) {
             size="xs"
             data-testid="editor-explain-line-btn"
             onClick={() => {
-              if (currentStep && selectedLineStart === 1 && selectedLineEnd === 1) {
+              if (currentStep && !isMultiLineSelection) {
                 setSelectedLines(currentStep.line, currentStep.line);
               }
               void askTutor({ action: "explain_line" });
@@ -314,12 +320,7 @@ export function CodeEditorPane({ onSaveShortcut }: CodeEditorPaneProps) {
             title="Ask AI Tutor to explain the selected line(s)"
           >
             <Sparkles className="h-3 w-3" />
-            <span>
-              Explain{" "}
-              {selectedLineStart === selectedLineEnd
-                ? `L${selectedLineStart}`
-                : `L${selectedLineStart}–L${selectedLineEnd}`}
-            </span>
+            <span>Explain {explainLabel}</span>
           </Button>
 
           <Button
