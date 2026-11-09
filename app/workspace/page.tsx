@@ -14,6 +14,7 @@ import { VisualizerPanel } from "@/components/visualizer/VisualizerPanel";
 import { AITutorPanel } from "@/components/tutor/AITutorPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SAMPLE_PROGRAMS } from "@/lib/data/samples";
+import { ALGORITHM_CATALOG, LEARNING_LESSONS } from "@/lib/data/catalog";
 import { useWorkspaceStore } from "@/store/use-workspace-store";
 import { useTutorStore } from "@/store/use-tutor-store";
 import { useProjectStore } from "@/store/use-project-store";
@@ -28,6 +29,7 @@ function WorkspaceIDEContent() {
   const hydrated = useHydrated();
 
   const projects = useProjectStore((s) => s.projects);
+  const executionHistory = useProjectStore((s) => s.executionHistory);
   const createProject = useProjectStore((s) => s.createProject);
   const updateProject = useProjectStore((s) => s.updateProject);
   const toast = useToastStore((s) => s.toast);
@@ -44,6 +46,7 @@ function WorkspaceIDEContent() {
 
   const loadSampleProgram = useWorkspaceStore((s) => s.loadSampleProgram);
   const loadSavedProject = useWorkspaceStore((s) => s.loadSavedProject);
+  const loadCustomSnippet = useWorkspaceStore((s) => s.loadCustomSnippet);
   const markSavedAsProject = useWorkspaceStore((s) => s.markSavedAsProject);
   const checkBackendHealth = useWorkspaceStore((s) => s.checkBackendHealth);
   const runExecution = useWorkspaceStore((s) => s.runExecution);
@@ -60,14 +63,39 @@ function WorkspaceIDEContent() {
     void checkBackendHealth();
   }, [checkBackendHealth]);
 
-  // Load ?project=<id>, ?sample=<slug>, or ?template=<slug> when navigated from Dashboard / Library
+  // Load ?project=<id>, ?sample=<slug>, ?algorithm=<slug>, ?lesson=<slug>, or ?history=<id> when navigated from Dashboard / Library / Learn / History
   const projectParam = searchParams.get("project");
   const sampleParam = searchParams.get("sample") ?? searchParams.get("template");
+  const algorithmParam = searchParams.get("algorithm");
+  const lessonParam = searchParams.get("lesson");
+  const historyParam = searchParams.get("history");
   const appliedQueryRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    const queryKey = `${projectParam ?? ""}|${sampleParam ?? ""}`;
-    if (queryKey === "|" || appliedQueryRef.current === queryKey) return;
+    const queryKey = `${projectParam ?? ""}|${sampleParam ?? ""}|${algorithmParam ?? ""}|${lessonParam ?? ""}|${historyParam ?? ""}`;
+    if (queryKey === "||||" || appliedQueryRef.current === queryKey) return;
+
+    if (algorithmParam) {
+      const alg = ALGORITHM_CATALOG.find(
+        (a) => a.slug === algorithmParam || a.id === algorithmParam
+      );
+      if (alg) {
+        loadCustomSnippet(alg.title, alg.codeExample);
+        appliedQueryRef.current = queryKey;
+        return;
+      }
+    }
+
+    if (lessonParam) {
+      const lesson = LEARNING_LESSONS.find(
+        (l) => l.slug === lessonParam || l.id === lessonParam
+      );
+      if (lesson) {
+        loadCustomSnippet(lesson.title, lesson.exampleCode);
+        appliedQueryRef.current = queryKey;
+        return;
+      }
+    }
 
     if (!projectParam && sampleParam) {
       const normalizedSampleId = `sample_${sampleParam.replace(/-/g, "_")}`;
@@ -82,9 +110,26 @@ function WorkspaceIDEContent() {
         appliedQueryRef.current = queryKey;
         return;
       }
+      const matchedAlg = ALGORITHM_CATALOG.find(
+        (a) => a.slug === sampleParam || a.sampleSlug === sampleParam
+      );
+      if (matchedAlg) {
+        loadCustomSnippet(matchedAlg.title, matchedAlg.codeExample);
+        appliedQueryRef.current = queryKey;
+        return;
+      }
     }
 
     if (!hydrated) return;
+
+    if (historyParam) {
+      const historyItem = executionHistory.find((h) => h.id === historyParam);
+      if (historyItem) {
+        loadCustomSnippet(historyItem.title, historyItem.sourceCode);
+        appliedQueryRef.current = queryKey;
+        return;
+      }
+    }
 
     if (projectParam) {
       const existingProject = projects.find((p) => p.id === projectParam);
@@ -103,7 +148,12 @@ function WorkspaceIDEContent() {
       }
     }
   }, [
+    algorithmParam,
+    executionHistory,
+    historyParam,
     hydrated,
+    lessonParam,
+    loadCustomSnippet,
     loadSampleProgram,
     loadSavedProject,
     projectParam,

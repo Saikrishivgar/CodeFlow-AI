@@ -56,8 +56,22 @@ class IsolatedExecutionRunner:
         )
         self._docker_available: bool | None = None
 
-    def detect_mode(self) -> RunnerMode:
+    def detect_mode(self, environment_override: str | None = None) -> RunnerMode:
+        env = (environment_override or settings.environment).lower()
         pref = settings.execution_mode_preference.lower()
+
+        if env == "production":
+            if pref == "development_subprocess":
+                raise RuntimeError(
+                    "SECURITY BLOCK: 'development_subprocess' mode is strictly forbidden when CODEFLOW_ENV=production."
+                )
+            if not self._is_docker_image_ready():
+                raise RuntimeError(
+                    f"SECURITY BLOCK: Production mode requires verified Docker sandbox isolation, "
+                    f"but Docker daemon or image '{settings.docker_image}' is unavailable."
+                )
+            return "docker_sandbox"
+
         if pref == "development_subprocess":
             return "development_subprocess"
         if pref in ("docker", "auto"):
@@ -68,6 +82,22 @@ class IsolatedExecutionRunner:
                     f"Docker sandbox requested but image '{settings.docker_image}' or Docker daemon is unavailable."
                 )
         return "development_subprocess"
+
+    def _is_docker_daemon_reachable(self) -> bool:
+        docker_bin = shutil.which("docker")
+        if not docker_bin:
+            return False
+        try:
+            probe = subprocess.run(
+                [docker_bin, "info"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=1.5,
+                check=False,
+            )
+            return probe.returncode == 0
+        except Exception:
+            return False
 
     def _is_docker_image_ready(self) -> bool:
         if self._docker_available is not None:
@@ -88,6 +118,103 @@ class IsolatedExecutionRunner:
         except Exception:
             self._docker_available = False
         return self._docker_available
+
+    def build_docker_command(self, container_name: str) -> list[str]:
+        docker_bin = shutil.which("docker") or "docker"
+        return [
+            docker_bin,
+            "run",
+            "--rm",
+            "-i",
+            "--name",
+            container_name,
+            "--network",
+            "none",
+            "--read-only",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=16m",
+            "--memory",
+            f"{settings.max_memory_mb}m",
+            "--memory-swap",
+            f"{settings.max_memory_mb}m",
+            "--cpus",
+            "0.5",
+            "--pids-limit",
+            "32",
+            "--cap-drop",
+            "ALL",
+            "--security-opt",
+            "no-new-privileges",
+            "--user",
+            "65534:65534",
+            settings.docker_image,
+            "python3",
+            "-I",
+            "/runner/app/execution/worker_entry.py",
+        ]
+
+    def audit_security_status(self) -> dict[str, Any]:
+        docker_bin = shutil.which("docker")
+        cli_installed = docker_bin is not None
+        daemon_reachable = self._is_docker_daemon_reachable() if cli_installed else False
+        # Refresh cached check for live audit accuracy
+        self._docker_available = None
+        image_ready = self._is_docker_image_ready() if daemon_reachable else False
+        docker_verified = bool(cli_installed and daemon_reachable and image_ready)
+
+        blockers: list[str] = []
+        if not cli_installed:
+            blockers.append("Docker CLI binary is not installed on the host.")
+        elif not daemon_reachable:
+            blockers.append(
+                "Docker daemon is not running or socket is unreachable (/var/run/docker.sock). "
+                "Container isolation cannot be verified in practice until Docker daemon is started."
+            )
+        elif not image_ready:
+            blockers.append(
+                f"Docker sandbox image '{settings.docker_image}' has not been built yet "
+                f"(run `docker build -f backend/Dockerfile.runner -t {settings.docker_image} backend`)."
+            )
+
+        active_mode: RunnerMode = (
+            "docker_sandbox"
+            if docker_verified and settings.execution_mode_preference.lower() != "development_subprocess"
+            else "development_subprocess"
+        )
+
+        return {
+            "environment": settings.environment,
+            "active_execution_mode": active_mode,
+            "docker_cli_installed": cli_installed,
+            "docker_daemon_reachable": daemon_reachable,
+            "docker_sandbox_image": settings.docker_image,
+            "docker_sandbox_image_present": image_ready,
+            "docker_isolation_verified": docker_verified,
+            "production_deployment_blocked": not docker_verified,
+            "deployment_blockers": blockers,
+            "docker_container_flags": [
+                "--rm",
+                "--network none",
+                "--read-only",
+                "--tmpfs /tmp:rw,noexec,nosuid,size=16m",
+                f"--memory {settings.max_memory_mb}m",
+                f"--memory-swap {settings.max_memory_mb}m",
+                "--cpus 0.5",
+                "--pids-limit 32",
+                "--cap-drop ALL",
+                "--security-opt no-new-privileges",
+                "--user 65534:65534",
+            ],
+            "worker_sandbox_controls": [
+                "PEP 578 sys.addaudithook blocking socket, subprocess, urllib, http, ctypes, shutil, os mutations",
+                "Direct user open() blocked; only frozen importlib stdlib reads inside sys.base_prefix permitted",
+                "Complete os.environ.clear() inside worker before user code execution",
+                "Backend application root removed from sys.path and 'app' imports blocked",
+                "POSIX resource.setrlimit (RLIMIT_CPU, RLIMIT_FSIZE=0, RLIMIT_NOFILE=64, RLIMIT_AS/DATA)",
+                "Wall-clock SIGALRM ITIMER_REAL + parent process-group SIGKILL timeout enforcement",
+                "Ephemeral 0700 working directory deleted after every execution",
+            ],
+        }
 
     def run_trace(
         self,
@@ -152,37 +279,7 @@ class IsolatedExecutionRunner:
     ) -> dict[str, Any]:
         docker_bin = shutil.which("docker") or "docker"
         container_name = f"cf_sandbox_{uuid.uuid4().hex[:10]}"
-        cmd = [
-            docker_bin,
-            "run",
-            "--rm",
-            "-i",
-            "--name",
-            container_name,
-            "--network",
-            "none",
-            "--read-only",
-            "--tmpfs",
-            "/tmp:rw,noexec,nosuid,size=16m",
-            "--memory",
-            f"{settings.max_memory_mb}m",
-            "--memory-swap",
-            f"{settings.max_memory_mb}m",
-            "--cpus",
-            "0.5",
-            "--pids-limit",
-            "32",
-            "--cap-drop",
-            "ALL",
-            "--security-opt",
-            "no-new-privileges",
-            "--user",
-            "65534:65534",
-            settings.docker_image,
-            "python3",
-            "-I",
-            "/runner/app/execution/worker_entry.py",
-        ]
+        cmd = self.build_docker_command(container_name)
 
         proc = subprocess.Popen(
             cmd,
@@ -196,24 +293,28 @@ class IsolatedExecutionRunner:
             out_bytes, err_bytes = proc.communicate(
                 input=stdin_bytes, timeout=timeout_seconds + 0.75
             )
+            return self._parse_worker_output(
+                out_bytes=out_bytes,
+                err_bytes=err_bytes,
+                return_code=proc.returncode,
+                source_code=source_code,
+                timeout_seconds=timeout_seconds,
+            )
         except subprocess.TimeoutExpired:
             self._terminate_process_group(proc)
-            subprocess.run(
-                [docker_bin, "rm", "-f", container_name],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=2.0,
-                check=False,
-            )
             return self._timeout_fallback_payload(source_code, timeout_seconds)
-
-        return self._parse_worker_output(
-            out_bytes=out_bytes,
-            err_bytes=err_bytes,
-            return_code=proc.returncode,
-            source_code=source_code,
-            timeout_seconds=timeout_seconds,
-        )
+        finally:
+            self._terminate_process_group(proc)
+            try:
+                subprocess.run(
+                    [docker_bin, "rm", "-f", container_name],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2.0,
+                    check=False,
+                )
+            except Exception:
+                pass
 
     def _run_in_dev_subprocess(
         self,

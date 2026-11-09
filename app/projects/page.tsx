@@ -20,9 +20,9 @@ export default function ProjectsPage() {
       <div className="space-y-6">
         <PageHeader
           title="My Projects"
-          badge="Local State"
-          badgeVariant="secondary"
-          description="Manage local Python drafts and starter templates stored in your browser. Cloud synchronization with PostgreSQL will be introduced in Phase 6."
+          badge="SQLite + Browser Synced"
+          badgeVariant="emerald"
+          description="Manage your saved Python programs and starter templates. Projects persist across page reloads and application restarts via SQLite and localStorage."
           actions={
             <Button onClick={() => setCreateProjectModalOpen(true)}>
               <Plus className="h-4 w-4" />

@@ -2,54 +2,122 @@
 
 > **Understand Every Line. Visualize Every Step.**
 
-CODEFLOW AI is an interactive programming learning and visualization platform designed to make control flow, variable state, recursion, and data structures visible step by step.
+CODEFLOW AI is a full-stack interactive Python programming visualization, algorithm comparison, and AI-assisted learning platform built with **Next.js 14 (App Router, TypeScript, Tailwind CSS, Zustand, Monaco Editor)** and a **Python 3.12 FastAPI execution & tracing engine**.
 
-## Completed Phases
+---
 
-### Phase 1 — Frontend Foundation, Landing Page & Dashboard
-- **Design System & Tokens**: Semantic CSS custom properties (`background`, `surface-1..3`, `border`, `accent` tokens, elevation shadows, typography scale) with persistent **Dark (default)** and **Light** themes.
-- **Landing Page (`/`)**: Responsive navbar, interactive storyboard Hero preview, Problem & Solution breakdown, 6 Feature cards, 4-Step workflow, 5-Structure Visualization Showcase (`Tabs`), Language Roadmap, CTA, and Footer.
-- **Application Dashboard (`/dashboard`)**: Collapsible responsive sidebar (`⌘B`), global command search (`⌘K`), honest local/demo-labeled Statistics, 9 Quick Start DSA cards, local CRUD Recent Projects table (`Open`, `Rename`, `Duplicate`, `Delete`), Learning Progress tracker, and Quick Actions.
-- **Core Application Routes**: `/workspace`, `/projects`, `/algorithms`, `/learn`, `/comparison`, `/history`, `/tutor`, and `/settings`.
+## Completed Platform Capabilities (Phases 1–5)
 
-### Phase 2 — Interactive Code Workspace & Python 3.12 Execution Engine
-- **Professional IDE Workspace (`/workspace`)**:
-  - **Monaco Editor** (`@monaco-editor/react` loaded from local static bundle `/public/monaco/vs`) with Python syntax highlighting, dark/light themes, code folding, bracket matching, font customization, active execution line highlight, and gutter indicator.
-  - **Execution Transport & Visual Timeline**: `Run` (`⌘/Ctrl+Enter`), `Step Forward` (`F10`), `Step Backward` (`Shift+F10`), `Auto Play` (`0.5x`, `1x`, `1.5x`, `2x`), `Reset` (`⌘/Ctrl+Shift+R`), and interactive clickable step scrubber.
-  - **"What's Happening?" Panel**: Deterministic rule-based beginner explanations derived from AST structure and live variable state changes.
-  - **Variable Inspector**: Tracks created, modified, and removed variables, distinguishes local vs. global scopes, preserves `ref#N` object identity/aliases, and expands nested lists, dicts, tuples, sets, deques, and objects.
-  - **Execution Output Dock**: Synchronized `Output`, `Execution Trace`, and beginner-friendly `Errors` tabs.
-  - **Sample Program Library**: 22 tracer-verified Python programs across *Python Basics*, *DSA*, and *Advanced*.
-- **FastAPI Python 3.12 Execution Backend (`backend/`)**:
-  - `POST /api/execute` and `GET /api/health` powered by `sys.settrace` frame inspection, cycle-safe variable serialization, and isolated worker execution.
+| Phase | Module | Capabilities |
+| :--- | :--- | :--- |
+| **Phase 1** | **Landing & Dashboard Foundation** | Marketing landing page (`/`), interactive dashboard (`/dashboard`), theme persistence (dark default + light mode), responsive command palette (`Cmd+K`), and keyboard shortcut cheatsheet (`?`). |
+| **Phase 2** | **Interactive Code Workspace & Python 3.12 Engine** | Monaco IDE (`/workspace`) with deterministic `sys.settrace` execution (`POST /api/execute`), forward/backward time-travel stepping, variable state-diff badges (`created`, `modified`, `unchanged`, `deleted`), call-stack frames, and beginner-friendly error diagnostics. |
+| **Phase 3** | **Data Structure & Memory Visualiser** | Automatic runtime structure detection and interactive SVG/canvas visualisers for **Arrays & Two Pointers**, **Stack & Queue**, **Hash Map / Dict & Set**, **Singly/Doubly Linked Lists** (with cycle detection), **Binary Trees / BSTs**, **Heaps**, **Graphs (BFS/DFS)**, **Recursion Call Trees**, and **Python Object/Reference Heap Graphs**. |
+| **Phase 4** | **Execution-Aware AI Tutor & DSA Assistant** | Docked Workspace AI Tutor and standalone AI Tutor Studio (`/tutor`) grounded in real execution snapshots (line number, variable diffs, call stack, stdout, runtime errors, and detected structures). Supports server-side **Google Gemini** (`GEMINI_API_KEY`), **OpenAI** (`OPENAI_API_KEY`), and a deterministic **Execution-Trace Tutor** fallback that never fabricates variable values. |
+| **Phase 5** | **Comparison Lab, Algorithm Library, Guided Learning & Persistence** | Side-by-side **Brute-Force vs. Optimized Algorithm Comparison Lab** (`/comparison`, `POST /api/compare`) running two independent Python executions on identical inputs; **14-Blueprint Algorithm Library** (`/algorithms`) across all 9 required categories; **Guided Learning Studio** (`/learn`) with 12 lessons and live Python-verified practice exercises; and **SQLite + Browser Persistence** across `/projects`, `/history`, `/learn`, and `/tutor`. |
 
-## Security Notice (Execution Isolation)
+---
 
-- **Preferred Production Sandbox**: Containerized Docker runner (`backend/Dockerfile.runner`) with `--network none`, `--read-only`, `--cap-drop ALL`, `--security-opt no-new-privileges`, memory limits, and PID caps (`CODEFLOW_EXECUTION_MODE=docker` or `auto`).
-- **Local Development Mode**: When Docker is not running locally, `auto` falls back to a clearly marked **`development_subprocess`** runner (`python3 -I` isolated subprocess, ephemeral temp directory, POSIX resource limits, wall-clock `SIGALRM` + process-group `SIGKILL` timeouts, step/output caps, and PEP 578 `sys.addaudithook` restrictions). **Ordinary subprocess isolation is NOT a kernel security boundary — never expose `development_subprocess` mode publicly.**
+## Architecture & Repository Layout
 
-## Getting Started
+```text
+codeflow/
+├── app/                        # Next.js 14 App Router pages
+│   ├── page.tsx                # Marketing Landing Page
+│   ├── dashboard/page.tsx      # Workspace Overview & Metrics
+│   ├── workspace/page.tsx      # Interactive Python IDE, Tracer, Visualiser & AI Tutor Dock
+│   ├── comparison/page.tsx     # Side-by-side Brute-Force vs Optimized Execution Lab
+│   ├── algorithms/page.tsx     # 9-Category Runnable Algorithm Library
+│   ├── learn/page.tsx          # Guided Learning Paths & Verified Practice Exercises
+│   ├── tutor/page.tsx          # Standalone AI Tutor & DSA Concept Studio
+│   ├── projects/page.tsx       # Saved Projects Manager (SQLite + localStorage)
+│   ├── history/page.tsx        # Replayable Execution History Log (SQLite + localStorage)
+│   └── settings/page.tsx       # Theme, Profile, Persistence & Sandbox Security Audit
+├── components/                 # Modular UI, Workspace, Visualiser & Tutor components
+├── lib/                        # API client, Data Structure detectors, Tutor grounding, Catalogs
+├── store/                      # Zustand state stores (Workspace, Project/SQLite sync, Tutor, App)
+├── tests/                      # Frontend unit & integration tests (Node test runner + tsx)
+└── backend/                    # Python 3.12 FastAPI Execution, Tutor & Persistence Service
+    ├── app/
+    │   ├── api/                # /api/execute, /api/compare, /api/security/audit, /api/tutor/*, /api/projects, /api/history, /api/learn/progress
+    │   ├── execution/          # worker_entry.py, tracer.py, runner.py, serializer.py, explainer.py, error_formatter.py
+    │   ├── storage/            # SQLite persistence (workspace_store.py)
+    │   └── tutor/              # Gemini/OpenAI adapters, grounding engine, SQLite conversation store
+    ├── tests/                  # 73 pytest unit, API, persistence & security tests
+    ├── Dockerfile              # FastAPI backend container
+    └── Dockerfile.runner       # Unprivileged Python 3.12 sandbox runner image
+```
 
-### 1. Start the FastAPI Python 3.12 Backend
+---
+
+## Local Installation & Running Guide
+
+### Prerequisites
+
+- **Node.js** `>= 20.x` and `npm`
+- **Python** `3.12`
+- *(Optional, required for public production isolation)* **Docker Desktop / Docker Engine**
+
+### 1. Configure Environment Variables
+
+```bash
+cp .env.example .env.local
+cp .env.example backend/.env
+```
+
+Add `GEMINI_API_KEY` or `OPENAI_API_KEY` in `backend/.env` if you want live LLM cloud responses in `/tutor`. Without external keys, the AI Tutor automatically uses the built-in **Deterministic Execution-Trace Tutor** grounded in real runtime snapshots.
+
+### 2. Start the Python 3.12 FastAPI Backend (`127.0.0.1:8000`)
 
 ```bash
 cd backend
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Run backend tests:
-
-```bash
-backend/.venv/bin/pytest backend/tests -v
-```
-
-### 2. Start the Next.js Frontend
+### 3. Start the Next.js Frontend (`http://localhost:3000`)
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000/workspace` for the Interactive Execution IDE or `http://localhost:3000/dashboard` for the Application Dashboard.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## Running Automated Tests & Quality Checks
+
+```bash
+# 1. Backend unit, tracing, tutor, comparison, persistence & security tests (73 tests)
+backend/.venv/bin/pytest backend/tests -v
+
+# 2. Frontend unit tests (visualiser detectors, AI tutor grounding, Phase 5 catalogs & API)
+npm test
+
+# 3. TypeScript strict typecheck, ESLint & production build
+npm run typecheck
+npm run lint
+npm run build
+```
+
+---
+
+## Python Execution Security Audit & Production Readiness Notice
+
+CODEFLOW AI enforces defense-in-depth controls inside [`backend/app/execution/worker_entry.py`](backend/app/execution/worker_entry.py) and [`backend/app/execution/runner.py`](backend/app/execution/runner.py):
+
+1. **Zero In-Process Execution**: User Python code never executes inside Next.js or the FastAPI server process.
+2. **Environment & Secret Scrubbing**: `os.environ.clear()` runs inside the worker before user code compiles or executes, and `_BACKEND_ROOT` is removed from `sys.path`, preventing access to `.env` secrets or application modules (`import app`).
+3. **PEP 578 Audit Hook (`sys.addaudithook`)**:
+   - Blocks all user `open()` file reads and writes (`_is_internal_importlib_open` only allows Python's internal stdlib module loader from `sys.base_prefix`).
+   - Blocks network sockets (`socket.*`), subprocess spawning (`os.system`, `subprocess.*`, `os.fork`, `os.exec*`), dynamic library loading (`ctypes`, `dlopen`), and `sqlite3`.
+4. **Strict Module Allowlist**: Only safe educational standard library modules (`math`, `collections`, `heapq`, `bisect`, `itertools`, `functools`, `typing`, `dataclasses`, `string`, `re`, `random`, `statistics`, `decimal`, `fractions`, `copy`, `enum`, `operator`) can be imported.
+5. **Step, Recursion, Memory & Wall-Clock Caps**: Enforces a configurable step limit (default `500`, hard max `1500`), recursion depth limit (`60`), stdout cap (`24 KB`), POSIX `RLIMIT_CPU` / `RLIMIT_NPROC` / `RLIMIT_FSIZE`, and deterministic process-group termination (`os.killpg(pgid, SIGKILL)`) on timeout.
+6. **Production Environment Guard (`CODEFLOW_ENV=production`)**:
+   - When `CODEFLOW_ENV=production` is set, `ExecutionRunner.detect_mode()` **strictly requires** a reachable Docker daemon and the `codeflow-python-runner:3.12` sandbox image (`--network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 32 --memory 128m --cpus 0.50 --user 65534:65534`), and guarantees `docker rm -f <container>` cleanup in a `finally` block.
+   - It **refuses** to fall back to `development_subprocess` in production.
+
+> **Important Security Verification Status**:
+> While the Docker CLI is installed on the development machine, if the **Docker daemon is not running** on the host, live container execution cannot be verified in practice (`GET /api/security/audit` reports `docker_daemon_reachable: false`, `production_deployment_blocked: true`). **Do not expose `development_subprocess` mode to untrusted public internet traffic.** Before public multi-tenant deployment, start the Docker daemon, build `docker build -f backend/Dockerfile.runner -t codeflow-python-runner:3.12 ./backend`, and verify `GET /api/security/audit` returns `docker_isolation_verified: true` and `production_deployment_blocked: false`.

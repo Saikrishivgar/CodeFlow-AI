@@ -159,3 +159,57 @@ export interface ExecutionTraceRequest {
   stdin?: string;
   maxSteps?: number;
 }
+
+export interface CompareExecutionRequestPayload {
+  brute_force_code: string;
+  optimized_code: string;
+  shared_input_code?: string;
+  options?: ExecutionOptionsPayload;
+}
+
+export interface ComparisonMetricsPayload {
+  brute_force_steps: number;
+  optimized_steps: number;
+  steps_saved: number;
+  step_reduction_pct: number;
+  step_speedup_ratio: number;
+  brute_force_duration_ms: number;
+  optimized_duration_ms: number;
+  brute_force_peak_call_depth: number;
+  optimized_peak_call_depth: number;
+  brute_force_peak_variables: number;
+  optimized_peak_variables: number;
+  outputs_match: boolean;
+  verdict_headline: string;
+  verdict_details: string;
+}
+
+export interface CompareExecutionResponsePayload {
+  brute_force: ExecuteResponsePayload;
+  optimized: ExecuteResponsePayload;
+  metrics: ComparisonMetricsPayload;
+}
+
+export interface SecurityAuditResponsePayload {
+  environment: string;
+  active_execution_mode: ExecutionSandboxMode;
+  docker_cli_installed: boolean;
+  docker_daemon_reachable: boolean;
+  docker_sandbox_image: string;
+  docker_sandbox_image_present: boolean;
+  docker_isolation_verified: boolean;
+  production_deployment_blocked: boolean;
+  deployment_blockers: string[];
+  docker_container_flags: string[];
+  worker_sandbox_controls: string[];
+}
+
+export interface LearningProgressPayload {
+  explored_topics: string[];
+  explored_algorithms: string[];
+  completed_lessons: string[];
+  completed_exercises: string[];
+  active_track_id: string;
+  updated_at_iso: string;
+}
+

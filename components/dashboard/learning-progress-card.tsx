@@ -4,17 +4,21 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, Compass, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { QUICK_START_TOPICS } from "@/lib/data/catalog";
+import { LEARNING_LESSONS, QUICK_START_TOPICS } from "@/lib/data/catalog";
 import { useProjectStore } from "@/store/use-project-store";
 import { useHydrated } from "@/hooks/use-hydrated";
 
 export function LearningProgressCard() {
   const hydrated = useHydrated();
   const exploredTopics = useProjectStore((s) => s.exploredTopics);
+  const completedLessons = useProjectStore((s) => s.completedLessons);
+  const backendSynced = useProjectStore((s) => s.backendSynced);
   const markTopicExplored = useProjectStore((s) => s.markTopicExplored);
 
-  const totalTopics = QUICK_START_TOPICS.length;
-  const exploredCount = hydrated ? exploredTopics.length : 0;
+  const totalTopics = QUICK_START_TOPICS.length + LEARNING_LESSONS.length;
+  const exploredCount = hydrated
+    ? exploredTopics.length + completedLessons.length
+    : 0;
   const percentage = Math.round((exploredCount / totalTopics) * 100);
 
   const studiedTopicObjects = hydrated
@@ -50,13 +54,17 @@ export function LearningProgressCard() {
             </p>
           </div>
         </div>
-        <Badge variant="secondary">Local Progress</Badge>
+        <Badge variant={backendSynced ? "emerald" : "secondary"}>
+          {backendSynced ? "SQLite + Browser Synced" : "Local Progress"}
+        </Badge>
       </div>
 
       {/* Progress Bar & Topics Explored Metric */}
       <div className="rounded-lg border border-border-subtle bg-surface-2/50 p-4 space-y-2.5">
         <div className="flex items-center justify-between text-xs">
-          <span className="font-medium text-foreground">Topics Explored</span>
+          <span className="font-medium text-foreground">
+            Lessons &amp; Topics Mastered
+          </span>
           {hydrated ? (
             <span className="font-mono font-semibold text-foreground tabular-nums">
               {exploredCount} / {totalTopics} ({percentage}%)

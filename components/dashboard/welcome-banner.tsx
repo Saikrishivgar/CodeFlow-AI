@@ -13,8 +13,8 @@ export function WelcomeBanner() {
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Badge variant="default">Phase 1 Workspace</Badge>
-            <Badge variant="secondary">Local Browser Mode</Badge>
+            <Badge variant="default">CodeFlow AI v1.0</Badge>
+            <Badge variant="emerald">SQLite + Python 3.12 Active</Badge>
           </div>
           <h1 className="pt-1 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Welcome back!

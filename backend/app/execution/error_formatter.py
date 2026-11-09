@@ -181,7 +181,10 @@ def build_execution_error(
         tb = exc.__traceback__
         workspace_frames = []
         if tb is not None:
-            for frame_summary in traceback.extract_tb(tb):
+            stack_summary = traceback.StackSummary.extract(
+                traceback.walk_tb(tb), lookup_lines=False
+            )
+            for frame_summary in stack_summary:
                 if frame_summary.filename == "<workspace>":
                     workspace_frames.append(frame_summary)
 

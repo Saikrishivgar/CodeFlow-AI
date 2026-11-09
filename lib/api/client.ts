@@ -1,7 +1,17 @@
 import type {
+  CodeProject,
+  ExecutionHistoryEntry,
+  ProjectStatus,
+  SupportedLanguageId,
+} from "@/types";
+import type {
   BackendHealthResponse,
+  CompareExecutionRequestPayload,
+  CompareExecutionResponsePayload,
   ExecuteRequestPayload,
   ExecuteResponsePayload,
+  LearningProgressPayload,
+  SecurityAuditResponsePayload,
 } from "@/types/api";
 import type {
   DSATopicGuide,
@@ -276,5 +286,148 @@ export const codeflowApi = {
     } finally {
       window.clearTimeout(timer);
     }
+  },
+
+  // --- Phase 5: Algorithm Comparison, Security Audit & SQLite Persistence ---
+
+  async comparePythonCode(
+    payload: CompareExecutionRequestPayload
+  ): Promise<CompareExecutionResponsePayload> {
+    return requestJson<CompareExecutionResponsePayload>("/api/compare", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getSecurityAudit(): Promise<SecurityAuditResponsePayload> {
+    return requestJson<SecurityAuditResponsePayload>("/api/security/audit", {
+      method: "GET",
+    });
+  },
+
+  async listProjects(): Promise<CodeProject[]> {
+    return requestJson<CodeProject[]>("/api/projects", {
+      method: "GET",
+    });
+  },
+
+  async createProject(payload: {
+    id?: string;
+    name: string;
+    description?: string;
+    language?: SupportedLanguageId;
+    topicSlug?: string;
+    status?: ProjectStatus;
+    codePreview?: string;
+  }): Promise<CodeProject> {
+    return requestJson<CodeProject>("/api/projects", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateProject(
+    projectId: string,
+    patch: Partial<
+      Pick<
+        CodeProject,
+        "name" | "description" | "topicSlug" | "status" | "codePreview"
+      >
+    >
+  ): Promise<CodeProject> {
+    return requestJson<CodeProject>(
+      `/api/projects/${encodeURIComponent(projectId)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(patch),
+      }
+    );
+  },
+
+  async deleteProject(projectId: string): Promise<{ deleted: boolean; id: string }> {
+    return requestJson<{ deleted: boolean; id: string }>(
+      `/api/projects/${encodeURIComponent(projectId)}`,
+      {
+        method: "DELETE",
+      }
+    );
+  },
+
+  async resetProjects(): Promise<CodeProject[]> {
+    return requestJson<CodeProject[]>("/api/projects/reset", {
+      method: "POST",
+    });
+  },
+
+  async listExecutionHistory(): Promise<ExecutionHistoryEntry[]> {
+    return requestJson<ExecutionHistoryEntry[]>("/api/history", {
+      method: "GET",
+    });
+  },
+
+  async createExecutionHistoryEntry(payload: {
+    id?: string;
+    title: string;
+    sourceCode: string;
+    language?: SupportedLanguageId;
+    status: string;
+    totalSteps: number;
+    durationMs: number;
+    executionMode: string;
+    stdoutPreview: string;
+    errorTitle?: string | null;
+  }): Promise<ExecutionHistoryEntry> {
+    return requestJson<ExecutionHistoryEntry>("/api/history", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteExecutionHistoryEntry(
+    entryId: string
+  ): Promise<{ deleted: boolean; id: string }> {
+    return requestJson<{ deleted: boolean; id: string }>(
+      `/api/history/${encodeURIComponent(entryId)}`,
+      {
+        method: "DELETE",
+      }
+    );
+  },
+
+  async clearExecutionHistory(): Promise<{
+    cleared: boolean;
+    deleted_count: number;
+  }> {
+    return requestJson<{ cleared: boolean; deleted_count: number }>(
+      "/api/history",
+      {
+        method: "DELETE",
+      }
+    );
+  },
+
+  async getLearningProgress(): Promise<LearningProgressPayload> {
+    return requestJson<LearningProgressPayload>("/api/learn/progress", {
+      method: "GET",
+    });
+  },
+
+  async updateLearningProgress(patch: {
+    explored_topics?: string[];
+    explored_algorithms?: string[];
+    completed_lessons?: string[];
+    completed_exercises?: string[];
+    active_track_id?: string;
+  }): Promise<LearningProgressPayload> {
+    return requestJson<LearningProgressPayload>("/api/learn/progress", {
+      method: "PUT",
+      body: JSON.stringify(patch),
+    });
+  },
+
+  async resetLearningProgress(): Promise<LearningProgressPayload> {
+    return requestJson<LearningProgressPayload>("/api/learn/reset", {
+      method: "POST",
+    });
   },
 };

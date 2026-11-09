@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   CodeProject,
+  ExecutionHistoryEntry,
   NotificationItem,
   ProjectStatus,
   SupportedLanguageId,
@@ -10,6 +11,7 @@ import {
   INITIAL_LOCAL_PROJECTS,
   INITIAL_NOTIFICATIONS,
 } from "@/lib/data/catalog";
+import { codeflowApi } from "@/lib/api/client";
 import { createLocalId } from "@/lib/utils";
 
 export interface WorkspacePreferences {
@@ -23,10 +25,17 @@ export interface WorkspacePreferences {
 
 interface ProjectStoreState {
   projects: CodeProject[];
+  executionHistory: ExecutionHistoryEntry[];
   exploredTopics: string[];
   exploredAlgorithms: string[];
+  completedLessons: string[];
+  completedExercises: string[];
+  activeTrackId: string;
+  backendSynced: boolean;
   notifications: NotificationItem[];
   preferences: WorkspacePreferences;
+
+  syncWithBackend: () => Promise<void>;
 
   createProject: (payload: {
     name: string;
@@ -39,15 +48,37 @@ interface ProjectStoreState {
   renameProject: (id: string, newName: string) => void;
   updateProject: (
     id: string,
-    patch: Partial<Pick<CodeProject, "name" | "description" | "codePreview" | "status" | "topicSlug">>
+    patch: Partial<
+      Pick<
+        CodeProject,
+        "name" | "description" | "codePreview" | "status" | "topicSlug"
+      >
+    >
   ) => void;
   duplicateProject: (id: string) => CodeProject | null;
   deleteProject: (id: string) => void;
   touchProject: (id: string) => void;
   resetDemoProjects: () => void;
 
+  recordExecutionRun: (payload: {
+    title: string;
+    sourceCode: string;
+    language?: SupportedLanguageId;
+    status: string;
+    totalSteps: number;
+    durationMs: number;
+    executionMode: string;
+    stdoutPreview: string;
+    errorTitle?: string | null;
+  }) => ExecutionHistoryEntry;
+  deleteHistoryEntry: (id: string) => void;
+  clearExecutionHistory: () => void;
+
   markTopicExplored: (slug: string) => void;
   markAlgorithmExplored: (slug: string) => void;
+  toggleLessonCompleted: (lessonId: string) => void;
+  markExerciseCompleted: (exerciseId: string, lessonId?: string) => void;
+  setActiveTrackId: (trackId: string) => void;
   resetLearningProgress: () => void;
 
   markNotificationRead: (id: string) => void;
@@ -65,14 +96,65 @@ const DEFAULT_PREFERENCES: WorkspacePreferences = {
   compactProjectTable: false,
 };
 
+function pushLearningProgressToBackend(state: {
+  exploredTopics: string[];
+  exploredAlgorithms: string[];
+  completedLessons: string[];
+  completedExercises: string[];
+  activeTrackId: string;
+}): void {
+  void codeflowApi
+    .updateLearningProgress({
+      explored_topics: state.exploredTopics,
+      explored_algorithms: state.exploredAlgorithms,
+      completed_lessons: state.completedLessons,
+      completed_exercises: state.completedExercises,
+      active_track_id: state.activeTrackId,
+    })
+    .catch(() => {
+      // Offline fallback: localStorage remains authoritative until backend reconnects
+    });
+}
+
 export const useProjectStore = create<ProjectStoreState>()(
   persist(
     (set, get) => ({
       projects: INITIAL_LOCAL_PROJECTS,
+      executionHistory: [],
       exploredTopics: ["python-basics", "arrays", "sliding-window"],
       exploredAlgorithms: ["binary-search", "sliding-window-subarray"],
+      completedLessons: ["lesson-variables-memory"],
+      completedExercises: [],
+      activeTrackId: "track-foundations",
+      backendSynced: false,
       notifications: INITIAL_NOTIFICATIONS,
       preferences: DEFAULT_PREFERENCES,
+
+      syncWithBackend: async () => {
+        try {
+          const [remoteProjects, remoteHistory, remoteProgress] =
+            await Promise.all([
+              codeflowApi.listProjects(),
+              codeflowApi.listExecutionHistory(),
+              codeflowApi.getLearningProgress(),
+            ]);
+
+          set((state) => ({
+            projects:
+              remoteProjects.length > 0 ? remoteProjects : state.projects,
+            executionHistory: remoteHistory,
+            exploredTopics: remoteProgress.explored_topics,
+            exploredAlgorithms: remoteProgress.explored_algorithms,
+            completedLessons: remoteProgress.completed_lessons,
+            completedExercises: remoteProgress.completed_exercises,
+            activeTrackId:
+              remoteProgress.active_track_id || state.activeTrackId,
+            backendSynced: true,
+          }));
+        } catch {
+          // Backend offline: continue seamlessly with persisted localStorage state
+        }
+      },
 
       createProject: (payload) => {
         const now = new Date().toISOString();
@@ -81,7 +163,7 @@ export const useProjectStore = create<ProjectStoreState>()(
           name: payload.name.trim() || "Untitled Visualization",
           description:
             payload.description?.trim() ||
-            "Local Python draft prepared for Phase 2 step visualization.",
+            "Python program saved in CODEFLOW AI workspace.",
           language: payload.language ?? "python",
           topicSlug: payload.topicSlug ?? "python-basics",
           lastModifiedIso: now,
@@ -90,12 +172,24 @@ export const useProjectStore = create<ProjectStoreState>()(
           isDemoSeed: false,
           codePreview:
             payload.codePreview ??
-            `def solve(items: list[int]) -> int:\n    total = 0\n    for value in items:\n        total += value\n    return total`,
+            `def solve(items: list[int]) -> int:\n    total = 0\n    for value in items:\n        total += value\n    return total\n\nprint(solve([10, 20, 30]))`,
         };
 
         set((state) => ({
           projects: [newProject, ...state.projects],
         }));
+
+        void codeflowApi
+          .createProject({
+            id: newProject.id,
+            name: newProject.name,
+            description: newProject.description,
+            language: newProject.language,
+            topicSlug: newProject.topicSlug,
+            status: newProject.status,
+            codePreview: newProject.codePreview,
+          })
+          .catch(() => {});
 
         return newProject;
       },
@@ -112,6 +206,8 @@ export const useProjectStore = create<ProjectStoreState>()(
               : proj
           ),
         }));
+
+        void codeflowApi.updateProject(id, { name: trimmed }).catch(() => {});
       },
 
       updateProject: (id, patch) => {
@@ -128,6 +224,8 @@ export const useProjectStore = create<ProjectStoreState>()(
               : proj
           ),
         }));
+
+        void codeflowApi.updateProject(id, patch).catch(() => {});
       },
 
       duplicateProject: (id) => {
@@ -149,6 +247,18 @@ export const useProjectStore = create<ProjectStoreState>()(
           projects: [copy, ...state.projects],
         }));
 
+        void codeflowApi
+          .createProject({
+            id: copy.id,
+            name: copy.name,
+            description: copy.description,
+            language: copy.language,
+            topicSlug: copy.topicSlug,
+            status: copy.status,
+            codePreview: copy.codePreview,
+          })
+          .catch(() => {});
+
         return copy;
       },
 
@@ -156,6 +266,8 @@ export const useProjectStore = create<ProjectStoreState>()(
         set((state) => ({
           projects: state.projects.filter((proj) => proj.id !== id),
         }));
+
+        void codeflowApi.deleteProject(id).catch(() => {});
       },
 
       touchProject: (id) => {
@@ -169,26 +281,140 @@ export const useProjectStore = create<ProjectStoreState>()(
 
       resetDemoProjects: () => {
         set({ projects: INITIAL_LOCAL_PROJECTS });
+        void codeflowApi
+          .resetProjects()
+          .then((remote) => {
+            if (remote.length > 0) {
+              set({ projects: remote });
+            }
+          })
+          .catch(() => {});
+      },
+
+      recordExecutionRun: (payload) => {
+        const now = new Date().toISOString();
+        const entry: ExecutionHistoryEntry = {
+          id: createLocalId("run"),
+          title: payload.title.trim() || "Workspace Execution",
+          sourceCode: payload.sourceCode,
+          language: payload.language ?? "python",
+          status: payload.status,
+          totalSteps: payload.totalSteps,
+          durationMs: payload.durationMs,
+          executionMode: payload.executionMode,
+          stdoutPreview: payload.stdoutPreview.slice(0, 500),
+          errorTitle: payload.errorTitle ?? null,
+          createdAtIso: now,
+        };
+
+        set((state) => ({
+          executionHistory: [entry, ...state.executionHistory].slice(0, 50),
+        }));
+
+        void codeflowApi
+          .createExecutionHistoryEntry({
+            id: entry.id,
+            title: entry.title,
+            sourceCode: entry.sourceCode,
+            language: entry.language,
+            status: entry.status,
+            totalSteps: entry.totalSteps,
+            durationMs: entry.durationMs,
+            executionMode: entry.executionMode,
+            stdoutPreview: entry.stdoutPreview,
+            errorTitle: entry.errorTitle,
+          })
+          .catch(() => {});
+
+        return entry;
+      },
+
+      deleteHistoryEntry: (id) => {
+        set((state) => ({
+          executionHistory: state.executionHistory.filter((h) => h.id !== id),
+        }));
+        void codeflowApi.deleteExecutionHistoryEntry(id).catch(() => {});
+      },
+
+      clearExecutionHistory: () => {
+        set({ executionHistory: [] });
+        void codeflowApi.clearExecutionHistory().catch(() => {});
       },
 
       markTopicExplored: (slug) => {
-        set((state) =>
-          state.exploredTopics.includes(slug)
-            ? state
-            : { exploredTopics: [...state.exploredTopics, slug] }
-        );
+        set((state) => {
+          if (state.exploredTopics.includes(slug)) return state;
+          const next = {
+            ...state,
+            exploredTopics: [...state.exploredTopics, slug],
+          };
+          pushLearningProgressToBackend(next);
+          return { exploredTopics: next.exploredTopics };
+        });
       },
 
       markAlgorithmExplored: (slug) => {
-        set((state) =>
-          state.exploredAlgorithms.includes(slug)
-            ? state
-            : { exploredAlgorithms: [...state.exploredAlgorithms, slug] }
-        );
+        set((state) => {
+          if (state.exploredAlgorithms.includes(slug)) return state;
+          const next = {
+            ...state,
+            exploredAlgorithms: [...state.exploredAlgorithms, slug],
+          };
+          pushLearningProgressToBackend(next);
+          return { exploredAlgorithms: next.exploredAlgorithms };
+        });
+      },
+
+      toggleLessonCompleted: (lessonId) => {
+        set((state) => {
+          const exists = state.completedLessons.includes(lessonId);
+          const completedLessons = exists
+            ? state.completedLessons.filter((id) => id !== lessonId)
+            : [...state.completedLessons, lessonId];
+          const next = { ...state, completedLessons };
+          pushLearningProgressToBackend(next);
+          return { completedLessons };
+        });
+      },
+
+      markExerciseCompleted: (exerciseId, lessonId) => {
+        set((state) => {
+          const completedExercises = state.completedExercises.includes(
+            exerciseId
+          )
+            ? state.completedExercises
+            : [...state.completedExercises, exerciseId];
+          const completedLessons =
+            lessonId && !state.completedLessons.includes(lessonId)
+              ? [...state.completedLessons, lessonId]
+              : state.completedLessons;
+          const next = {
+            ...state,
+            completedExercises,
+            completedLessons,
+          };
+          pushLearningProgressToBackend(next);
+          return { completedExercises, completedLessons };
+        });
+      },
+
+      setActiveTrackId: (trackId) => {
+        set((state) => {
+          const next = { ...state, activeTrackId: trackId };
+          pushLearningProgressToBackend(next);
+          return { activeTrackId: trackId };
+        });
       },
 
       resetLearningProgress: () => {
-        set({ exploredTopics: [], exploredAlgorithms: [] });
+        set({
+          exploredTopics: [],
+          exploredAlgorithms: [],
+          completedLessons: [],
+          completedExercises: [],
+          activeTrackId: "track-foundations",
+        });
+        void codeflowApi.resetLearningProgress().catch(() => {});
       },
 
       markNotificationRead: (id) => {
@@ -217,4 +443,3 @@ export const useProjectStore = create<ProjectStoreState>()(
     }
   )
 );
-

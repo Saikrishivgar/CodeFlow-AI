@@ -13,6 +13,7 @@ import {
   type SampleProgram,
 } from "@/lib/data/samples";
 import { ApiClientError, codeflowApi } from "@/lib/api/client";
+import { useProjectStore } from "@/store/use-project-store";
 
 export type WorkspaceStatus =
   | "idle"
@@ -66,6 +67,7 @@ interface WorkspaceState {
 
   loadSampleProgram: (sample: SampleProgram) => void;
   loadSavedProject: (project: CodeProject) => void;
+  loadCustomSnippet: (title: string, code: string) => void;
   markSavedAsProject: (projectId: string, name: string) => void;
 
   checkBackendHealth: () => Promise<void>;
@@ -185,6 +187,23 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           selectedStructureId: null,
         }),
 
+      loadCustomSnippet: (title, code) =>
+        set({
+          projectName: title,
+          linkedProjectId: null,
+          activeSampleId: null,
+          sourceCode: code,
+          lastExecutedCode: null,
+          isDirty: false,
+          status: "idle",
+          traceResult: null,
+          networkError: null,
+          currentStepIndex: 0,
+          isPlaying: false,
+          activeBottomTab: "output",
+          selectedStructureId: null,
+        }),
+
       markSavedAsProject: (projectId, name) =>
         set({
           linkedProjectId: projectId,
@@ -259,6 +278,22 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               : "paused",
             activeBottomTab: nextTab,
           });
+
+          try {
+            useProjectStore.getState().recordExecutionRun({
+              title: get().projectName || "Workspace Execution",
+              sourceCode,
+              language: "python",
+              status: response.status,
+              totalSteps: response.total_steps,
+              durationMs: response.duration_ms,
+              executionMode: response.execution_mode,
+              stdoutPreview: response.stdout ?? "",
+              errorTitle: response.error?.friendly_title ?? null,
+            });
+          } catch {
+            // Never block execution on history logging
+          }
 
           return response;
         } catch (err) {

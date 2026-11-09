@@ -4,6 +4,7 @@ import * as React from "react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { useAppStore } from "@/store/use-app-store";
+import { useProjectStore } from "@/store/use-project-store";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useGlobalShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/utils";
@@ -13,7 +14,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const hydrated = useHydrated();
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const backendSynced = useProjectStore((s) => s.backendSynced);
+  const syncWithBackend = useProjectStore((s) => s.syncWithBackend);
   const collapsed = hydrated ? sidebarCollapsed : false;
+
+  React.useEffect(() => {
+    if (hydrated && !backendSynced) {
+      void syncWithBackend();
+    }
+  }, [backendSynced, hydrated, syncWithBackend]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

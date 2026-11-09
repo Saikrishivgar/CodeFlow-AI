@@ -45,23 +45,62 @@ export interface QuickStartTopic {
   sampleCodeTitle: string;
 }
 
+export type AlgorithmCategory =
+  | "Searching"
+  | "Sorting"
+  | "Two Pointers"
+  | "Sliding Window"
+  | "Recursion"
+  | "Stack & Queue"
+  | "Linked Lists"
+  | "Trees & Graphs"
+  | "Dynamic Programming";
+
 export interface AlgorithmCatalogItem {
   id: string;
   slug: string;
   title: string;
-  category:
-    | "Arrays & Two Pointers"
-    | "Sliding Window"
-    | "Trees & Graphs"
-    | "Recursion & Backtracking"
-    | "Sorting & Searching"
-    | "Hashing";
+  category: AlgorithmCategory;
   difficulty: DifficultyLevel;
   timeComplexity: string;
+  bestTimeComplexity?: string;
+  worstTimeComplexity?: string;
   spaceComplexity: string;
   bruteForceComplexity?: string;
+  complexityAssumption: string;
   summary: string;
   keyInsight: string;
+  howItWorksSteps: string[];
+  codeExample: string;
+  sampleSlug: string;
+  tutorTopicSlug: string;
+  comparisonScenarioId?: string;
+}
+
+export interface LearningPracticeExercise {
+  id: string;
+  title: string;
+  prompt: string;
+  starterCode: string;
+  solutionHint: string;
+  expectedOutputSubstring: string;
+  targetComplexity: string;
+}
+
+export interface LearningLesson {
+  id: string;
+  trackId: string;
+  slug: string;
+  title: string;
+  level: DifficultyLevel;
+  topicSlug: string;
+  sampleSlug: string;
+  estimatedMinutes: number;
+  conceptSummary: string;
+  mentalModel: string;
+  keyTakeaways: string[];
+  exampleCode: string;
+  exercise: LearningPracticeExercise;
 }
 
 export interface LearningTrack {
@@ -81,17 +120,36 @@ export interface ComparisonScenario {
   slug: string;
   title: string;
   category: string;
+  sharedInputCode: string;
   bruteForce: {
     approach: string;
     timeComplexity: string;
     spaceComplexity: string;
+    code: string;
   };
   optimized: {
     approach: string;
     timeComplexity: string;
     spaceComplexity: string;
+    code: string;
   };
   summary: string;
+  keyInsight: string;
+  complexityExplanation: string;
+}
+
+export interface ExecutionHistoryEntry {
+  id: string;
+  title: string;
+  sourceCode: string;
+  language: SupportedLanguageId;
+  status: string;
+  totalSteps: number;
+  durationMs: number;
+  executionMode: string;
+  stdoutPreview: string;
+  errorTitle?: string | null;
+  createdAtIso: string;
 }
 
 export interface NotificationItem {
@@ -119,4 +177,3 @@ export interface SearchableEntry {
   actionId?: string;
   keywords: string[];
 }
-

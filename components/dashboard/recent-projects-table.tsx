@@ -62,6 +62,7 @@ export function RecentProjectsTable({
   const hydrated = useHydrated();
 
   const projects = useProjectStore((s) => s.projects);
+  const backendSynced = useProjectStore((s) => s.backendSynced);
   const compactTable = useProjectStore(
     (s) => s.preferences.compactProjectTable
   );
@@ -151,7 +152,9 @@ export function RecentProjectsTable({
           >
             {title}
           </h2>
-          <Badge variant="secondary">Local Mock State</Badge>
+          <Badge variant={backendSynced ? "emerald" : "secondary"}>
+            {backendSynced ? "SQLite + Browser Synced" : "Browser Synced"}
+          </Badge>
         </div>
 
         <div className="flex items-center gap-2">
@@ -349,12 +352,11 @@ export function RecentProjectsTable({
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-surface-2/40 px-4 py-2.5 text-[11px] text-subtle-foreground">
           <span>
-            Temporary local browser storage · PostgreSQL cloud sync planned for
-            Phase 6
+            Persisted in SQLite database &amp; browser localStorage across restarts
           </span>
           {hydrated && projects.length > 0 && (
             <span>
-              Showing {visibleProjects.length} of {projects.length} local items
+              Showing {visibleProjects.length} of {projects.length} saved items
             </span>
           )}
         </div>

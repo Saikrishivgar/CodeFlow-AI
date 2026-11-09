@@ -8,12 +8,14 @@ from pathlib import Path
 @dataclass(frozen=True)
 class BackendSettings:
     app_name: str = "CODEFLOW AI Execution & Tutor Engine"
-    version: str = "0.4.0"
+    version: str = "1.0.0"
+    environment: str = os.getenv("CODEFLOW_ENV", "development").lower()
     host: str = os.getenv("CODEFLOW_BACKEND_HOST", "127.0.0.1")
     port: int = int(os.getenv("CODEFLOW_BACKEND_PORT", "8000"))
 
     # Execution mode: "auto" | "docker" | "development_subprocess"
     # Note: development_subprocess is strictly for local development on 127.0.0.1
+    # and is blocked when CODEFLOW_ENV=production.
     execution_mode_preference: str = os.getenv("CODEFLOW_EXECUTION_MODE", "auto")
     docker_image: str = os.getenv("CODEFLOW_RUNNER_IMAGE", "codeflow-python-runner:3.12")
 
@@ -59,6 +61,10 @@ class BackendSettings:
     tutor_db_path: str = os.getenv(
         "CODEFLOW_TUTOR_DB_PATH",
         str(Path(__file__).resolve().parents[2] / ".data" / "tutor_conversations.db"),
+    )
+    workspace_db_path: str = os.getenv(
+        "CODEFLOW_WORKSPACE_DB_PATH",
+        str(Path(__file__).resolve().parents[2] / ".data" / "codeflow_workspace.db"),
     )
 
     cors_origins: list[str] = field(

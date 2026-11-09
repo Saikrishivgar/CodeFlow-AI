@@ -12,15 +12,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAppStore } from "@/store/use-app-store";
 import { useProjectStore } from "@/store/use-project-store";
 import { useHydrated } from "@/hooks/use-hydrated";
-import { ALGORITHM_CATALOG } from "@/lib/data/catalog";
+import { ALGORITHM_CATALOG, LEARNING_LESSONS } from "@/lib/data/catalog";
 
 export function StatsGrid() {
   const hydrated = useHydrated();
   const demoStatsPreview = useAppStore((s) => s.demoStatsPreview);
   const setDemoStatsPreview = useAppStore((s) => s.setDemoStatsPreview);
   const projects = useProjectStore((s) => s.projects);
+  const executionHistory = useProjectStore((s) => s.executionHistory);
   const exploredTopics = useProjectStore((s) => s.exploredTopics);
+  const completedLessons = useProjectStore((s) => s.completedLessons);
   const exploredAlgorithms = useProjectStore((s) => s.exploredAlgorithms);
+  const backendSynced = useProjectStore((s) => s.backendSynced);
 
   const showDemo = hydrated ? demoStatsPreview : false;
 
@@ -28,44 +31,50 @@ export function StatsGrid() {
     {
       label: "Total Executions",
       icon: Activity,
-      value: showDemo ? "48" : "0",
-      statusBadge: showDemo ? "Demo Sample" : "Phase 2 Engine",
-      badgeVariant: showDemo ? ("amber" as const) : ("secondary" as const),
+      value: showDemo ? "48" : String(executionHistory.length),
+      statusBadge: showDemo
+        ? "Demo Sample"
+        : backendSynced
+        ? "SQLite Synced"
+        : "Python 3.12 Tracer",
+      badgeVariant: showDemo ? ("amber" as const) : ("emerald" as const),
       note: showDemo
-        ? "Illustrative sample figure — live execution arrives in Phase 2"
-        : "No runs recorded yet · Python tracer connects in Phase 2",
+        ? "Illustrative sample figure — toggle off for real execution count"
+        : `${executionHistory.length} program runs recorded in Execution History`,
     },
     {
-      label: "Programs Visualized",
+      label: "Saved Projects",
       icon: FileCode2,
-      value: showDemo ? "12" : "0",
-      statusBadge: showDemo ? "Demo Sample" : `${projects.length} Local Drafts`,
+      value: showDemo ? "12" : String(projects.length),
+      statusBadge: showDemo ? "Demo Sample" : `${projects.length} Saved`,
       badgeVariant: showDemo ? ("amber" as const) : ("secondary" as const),
       note: showDemo
         ? "Illustrative sample figure — not real user history"
-        : `${projects.length} local starter/draft programs saved in browser`,
+        : `${projects.length} Python programs persisted across restarts`,
     },
     {
-      label: "Learning Sessions",
+      label: "Lessons Completed",
       icon: BookOpenCheck,
-      value: showDemo ? "9" : String(exploredTopics.length > 0 ? 1 : 0),
-      statusBadge: showDemo ? "Demo Sample" : "Local Session",
+      value: showDemo
+        ? "9 / 12"
+        : `${completedLessons.length} / ${LEARNING_LESSONS.length}`,
+      statusBadge: showDemo ? "Demo Sample" : `${exploredTopics.length} Topics`,
       badgeVariant: showDemo ? ("amber" as const) : ("emerald" as const),
       note: showDemo
-        ? "Illustrative sample figure — cloud persistence in Phase 6"
-        : `${exploredTopics.length} quick-start topics inspected locally`,
+        ? "Illustrative sample figure — toggle off for real progress"
+        : `${completedLessons.length} curriculum lessons & ${exploredTopics.length} topics studied`,
     },
     {
       label: "Algorithms Explored",
       icon: Cpu,
       value: showDemo
-        ? "7 / 8"
+        ? "11 / 14"
         : `${exploredAlgorithms.length} / ${ALGORITHM_CATALOG.length}`,
-      statusBadge: showDemo ? "Demo Sample" : "Local State",
+      statusBadge: showDemo ? "Demo Sample" : "9 Categories",
       badgeVariant: showDemo ? ("amber" as const) : ("default" as const),
       note: showDemo
         ? "Illustrative sample figure — toggle off for local state"
-        : "Updates locally as you inspect patterns in Algorithm Library",
+        : "Updates as you inspect and run patterns in Algorithm Library",
     },
   ];
 
