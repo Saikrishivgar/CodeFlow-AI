@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
   ArrowRight,
   ChevronLeft,
@@ -95,12 +94,7 @@ export function HeroSection() {
       <div className="container relative">
         <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-10">
           {/* Left Column: Headline & Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="lg:col-span-6 space-y-6"
-          >
+          <div className="animate-hero-left lg:col-span-6 space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-1 px-3 py-1 shadow-elevation-1">
               <span className="h-2 w-2 rounded-full bg-accent-emerald" />
               <span className="text-xs font-medium text-muted-foreground">
@@ -147,15 +141,10 @@ export function HeroSection() {
                 Contextual AI tutor
               </span>
             </div>
-          </motion.div>
+          </div>
 
           {/* Right Column: Product Design Preview Window */}
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.08, ease: "easeOut" }}
-            className="lg:col-span-6"
-          >
+          <div className="animate-hero-right lg:col-span-6">
             <div className="overflow-hidden rounded-2xl border border-border-strong bg-surface-1 shadow-elevation-3">
               {/* Window Top Bar */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-2/70 px-4 py-2.5">
@@ -396,7 +385,7 @@ export function HeroSection() {
                 </span>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

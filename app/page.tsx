@@ -1,5 +1,3 @@
-"use client";
-
 import { LandingNavbar } from "@/components/landing/landing-navbar";
 import { HeroSection } from "@/components/landing/hero-section";
 import { ProblemSolutionSection } from "@/components/landing/problem-solution-section";
@@ -9,13 +7,12 @@ import { ShowcaseSection } from "@/components/landing/showcase-section";
 import { LanguagesSection } from "@/components/landing/languages-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { LandingFooter } from "@/components/landing/landing-footer";
-import { useGlobalShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { LandingShortcuts } from "@/components/landing/landing-shortcuts";
 
 export default function LandingPage() {
-  useGlobalShortcuts({ enableSidebarShortcut: false });
-
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <LandingShortcuts />
       <LandingNavbar />
       <main className="flex-1">
         <HeroSection />
