@@ -166,6 +166,16 @@ Progress is **persisted** in SQLite + browser storage — your completed lessons
 
 ---
 
+### 7. 🎨 Architectural Landing Page & Dashboard
+
+A design system built for focus. Dark mode by default, high-contrast visual tokens, and an interactive sample runner right in the hero banner:
+
+<img src="docs/screenshots/landing-hero.png" alt="CodeFlow AI Landing Page with Interactive Two-Pointers Preview" width="100%"/>
+
+> 📌 _Above: The CodeFlow AI landing page featuring the live sample preview with step-by-step memory frames, interactive pointer scrubbers, and variable inspector preview._
+
+---
+
 ## 🏗️ How It Works — Architecture
 
 ```

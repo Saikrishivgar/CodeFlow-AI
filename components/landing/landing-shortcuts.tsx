@@ -10,3 +10,4 @@ export function LandingShortcuts() {
   useGlobalShortcuts({ enableSidebarShortcut: false });
   return null;
 }
+
