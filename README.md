@@ -1,73 +1,265 @@
-# CODEFLOW AI
+<div align="center">
 
-> **Understand Every Line. Visualize Every Step.**
+<img src="docs/screenshots/workspace-step1.png" alt="CodeFlow AI — Understand Every Line. Visualize Every Step." width="100%"/>
 
-CODEFLOW AI is a full-stack interactive Python programming visualization, algorithm comparison, and AI-assisted learning platform built with **Next.js 14 (App Router, TypeScript, Tailwind CSS, Zustand, Monaco Editor)** and a **Python 3.12 FastAPI execution & tracing engine**.
+<br/><br/>
+
+# 🚀 CodeFlow AI
+
+### **Understand Every Line. Visualize Every Step.**
+
+**CodeFlow AI** is a full-stack interactive Python programming visualization and AI learning platform.  
+Write code, run it step-by-step, watch data structures come alive, and get real-time AI explanations — all in one place.
+
+<br/>
+
+[![Next.js](https://img.shields.io/badge/Next.js_15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python_3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+
+</div>
 
 ---
 
-## Completed Platform Capabilities (Phases 1–5)
+## 🤔 Why Does This Exist?
 
-| Phase | Module | Capabilities |
-| :--- | :--- | :--- |
-| **Phase 1** | **Landing & Dashboard Foundation** | Marketing landing page (`/`), interactive dashboard (`/dashboard`), theme persistence (dark default + light mode), responsive command palette (`Cmd+K`), and keyboard shortcut cheatsheet (`?`). |
-| **Phase 2** | **Interactive Code Workspace & Python 3.12 Engine** | Monaco IDE (`/workspace`) with deterministic `sys.settrace` execution (`POST /api/execute`), forward/backward time-travel stepping, variable state-diff badges (`created`, `modified`, `unchanged`, `deleted`), call-stack frames, and beginner-friendly error diagnostics. |
-| **Phase 3** | **Data Structure & Memory Visualiser** | Automatic runtime structure detection and interactive SVG/canvas visualisers for **Arrays & Two Pointers**, **Stack & Queue**, **Hash Map / Dict & Set**, **Singly/Doubly Linked Lists** (with cycle detection), **Binary Trees / BSTs**, **Heaps**, **Graphs (BFS/DFS)**, **Recursion Call Trees**, and **Python Object/Reference Heap Graphs**. |
-| **Phase 4** | **Execution-Aware AI Tutor & DSA Assistant** | Docked Workspace AI Tutor and standalone AI Tutor Studio (`/tutor`) grounded in real execution snapshots (line number, variable diffs, call stack, stdout, runtime errors, and detected structures). Supports server-side **Google Gemini** (`GEMINI_API_KEY`), **OpenAI** (`OPENAI_API_KEY`), and a deterministic **Execution-Trace Tutor** fallback that never fabricates variable values. |
-| **Phase 5** | **Comparison Lab, Algorithm Library, Guided Learning & Persistence** | Side-by-side **Brute-Force vs. Optimized Algorithm Comparison Lab** (`/comparison`, `POST /api/compare`) running two independent Python executions on identical inputs; **14-Blueprint Algorithm Library** (`/algorithms`) across all 9 required categories; **Guided Learning Studio** (`/learn`) with 12 lessons and live Python-verified practice exercises; and **SQLite + Browser Persistence** across `/projects`, `/history`, `/learn`, and `/tutor`. |
+Most people learn Python by reading code — but **reading code is not the same as understanding execution**.
+
+> _You read_ `for i in range(len(nums))` _ten times. You still can't picture what_ `nums[i]` _is at step 7._
+
+Traditional debuggers show you values in a table. That's still just text. What if the array actually moved? What if `left` and `right` pointers visually tracked across cells? What if a recursion tree drew itself in real-time as Python called each frame?
+
+**CodeFlow AI was built to answer these questions visually.**
 
 ---
 
-## Architecture & Repository Layout
+## ✨ What It Does — Feature by Feature
 
-```text
-codeflow/
-├── app/                        # Next.js 14 App Router pages
-│   ├── page.tsx                # Marketing Landing Page
-│   ├── dashboard/page.tsx      # Workspace Overview & Metrics
-│   ├── workspace/page.tsx      # Interactive Python IDE, Tracer, Visualiser & AI Tutor Dock
-│   ├── comparison/page.tsx     # Side-by-side Brute-Force vs Optimized Execution Lab
-│   ├── algorithms/page.tsx     # 9-Category Runnable Algorithm Library
-│   ├── learn/page.tsx          # Guided Learning Paths & Verified Practice Exercises
-│   ├── tutor/page.tsx          # Standalone AI Tutor & DSA Concept Studio
-│   ├── projects/page.tsx       # Saved Projects Manager (SQLite + localStorage)
-│   ├── history/page.tsx        # Replayable Execution History Log (SQLite + localStorage)
-│   └── settings/page.tsx       # Theme, Profile, Persistence & Sandbox Security Audit
-├── components/                 # Modular UI, Workspace, Visualiser & Tutor components
-├── lib/                        # API client, Data Structure detectors, Tutor grounding, Catalogs
-├── store/                      # Zustand state stores (Workspace, Project/SQLite sync, Tutor, App)
-├── tests/                      # Frontend unit & integration tests (Node test runner + tsx)
-└── backend/                    # Python 3.12 FastAPI Execution, Tutor & Persistence Service
-    ├── app/
-    │   ├── api/                # /api/execute, /api/compare, /api/security/audit, /api/tutor/*, /api/projects, /api/history, /api/learn/progress
-    │   ├── execution/          # worker_entry.py, tracer.py, runner.py, serializer.py, explainer.py, error_formatter.py
-    │   ├── storage/            # SQLite persistence (workspace_store.py)
-    │   └── tutor/              # Gemini/OpenAI adapters, grounding engine, SQLite conversation store
-    ├── tests/                  # 73 pytest unit, API, persistence & security tests
-    ├── Dockerfile              # FastAPI backend container
-    └── Dockerfile.runner       # Unprivileged Python 3.12 sandbox runner image
+### 1. 🖥️ Interactive Python Code Workspace
+
+Write or paste any Python program in a Monaco editor (the same editor that powers VS Code). Hit **Run**, and the platform:
+
+- Captures every single execution step using Python's built-in `sys.settrace` tracer
+- Lets you **step forward and backward** through execution like a time machine
+- Shows you **exactly which line is executing**, highlighted in real-time
+- Tells you in plain English **what each step does**, with beginner-friendly explanations
+
+**You can pause, rewind, replay. You are in complete control of time.**
+
+<img src="docs/screenshots/workspace-two-pointers.png" alt="Interactive Workspace — Two Pointers stepping" width="100%"/>
+
+> 📌 _In the screenshot above: The program is paused at Step 10 / 21. You can see `right -= 1` executing on Line 15. The fluid scrubber at the top shows progress. The array visualizer on the right shows the `left` and `right` pointer positions live. The Variable Inspector on the right shows all 6 active variables as animated cards._
+
+---
+
+### 2. 🧠 Live Data Structure Visualizer
+
+This is the heart of CodeFlow AI. The platform **automatically detects** data structures in your Python program and renders them visually — no special annotations required.
+
+**Supported Structures:**
+
+| Structure | What You See |
+|---|---|
+| **Arrays / Lists** | Animated cells with index labels, pointer arrows (`left`, `right`, `i`), sliding window brackets |
+| **Two Pointers** | Named pointer pills floating above cells, converging in real-time |
+| **Stacks & Queues** | LIFO push/pop and FIFO enqueue/dequeue animations |
+| **Linked Lists** | Nodes with arrows, `next` pointer traversal, cycle detection |
+| **Binary Trees / BSTs** | Hierarchical tree layout with current-node highlighting |
+| **Heaps** | Min/Max heap tree with sift-up/sift-down animations |
+| **Hash Maps / Dicts** | Key→Value pair visualization with collision awareness |
+| **Graphs (BFS/DFS)** | Interactive node-edge graph with visited/queue state |
+| **Recursion Trees** | Full call tree drawn as Python recurses — with return values |
+
+<img src="docs/screenshots/graph-bfs.png" alt="Graph BFS Visualization" width="100%"/>
+
+> 📌 _Above: Graph BFS in action. The visualizer shows the directed graph with node A currently being processed (highlighted). The visited set and BFS queue are both shown live. The `What's Happening?` panel explains every mutation in plain English._
+
+<br/>
+
+<img src="docs/screenshots/recursion-tree.png" alt="Recursion Tree Visualization" width="100%"/>
+
+> 📌 _Above: A `climb_ways(4)` recursion problem. The full call tree drew itself step-by-step as Python recursed 9 times. Each frame is a node. Return values propagate upward. The call stack panel shows depth = 4._
+
+---
+
+### 3. 🤖 Execution-Aware AI Tutor
+
+The AI Tutor is **not a generic chatbot**. It is grounded in your actual runtime — it knows:
+
+- The exact line being executed right now
+- Every variable's current and previous value
+- The active call stack frames
+- What data structures are on screen
+- Any runtime errors that occurred
+
+You can ask it things like:
+- _"Why did Step 6 execute line 7?"_
+- _"Explain this Two Pointers approach"_
+- _"I got an IndexError — what did I do wrong?"_
+- _"What's the time complexity of this loop?"_
+
+It answers based on **your actual code and actual values** — never fabricated.
+
+<img src="docs/screenshots/ai-tutor-panel.png" alt="AI Tutor Panel with live variable context" width="100%"/>
+
+> 📌 _Above: The AI Tutor panel (right column) shows Live Runtime Variables at Step 6, the Active Data Structure State, and the Algorithmic Context with time and space complexity. The tutor answered "Why This Step?" using the real trace — not a hallucination._
+
+**AI Providers supported:**
+- **Google Gemini** (via `GEMINI_API_KEY`)
+- **OpenAI GPT** (via `OPENAI_API_KEY`)
+- **Built-in Execution-Trace Engine** — works fully offline, zero API key needed. Uses AST analysis + trace data to give real explanations.
+
+---
+
+### 4. ⚡ Algorithm Comparison Lab
+
+Ever wondered **why O(n log n) beats O(n²)** in practice — not just in theory?
+
+The Comparison Lab runs **two Python implementations side-by-side** on identical inputs and shows:
+
+- Exact execution step counts (Brute-Force: 92 steps vs Optimized: 16 steps)
+- Real measured runtime in milliseconds
+- Call stack depth comparison
+- Variable memory snapshots at each step
+- Synchronized playback scrubber
+
+<img src="docs/screenshots/comparison-lab.png" alt="Algorithm Comparison Lab — Fibonacci Brute-Force vs DP" width="100%"/>
+
+> 📌 _Above: Fibonacci Brute-Force (O(2ⁿ) naive recursion) vs Bottom-Up DP (O(n)). On input n=6, brute-force took 92 steps and 59.92ms. The optimized DP took just 16 steps and 32.58ms — an 82.6% reduction. Both produce identical output, verified live._
+
+---
+
+### 5. 📚 Algorithm Library
+
+A searchable, categorized collection of **14 runnable algorithm blueprints** across 9 categories.
+
+Each algorithm includes:
+- Plain-English explanation + visual invariant
+- Step-by-step mechanics
+- Best/Average/Worst time complexity + space complexity
+- Full working Python implementation
+- One-click **Open & Run in Workspace** button
+
+<img src="docs/screenshots/algorithm-library.png" alt="Algorithm Library" width="100%"/>
+
+**Categories covered:** Searching · Sorting · Two Pointers · Sliding Window · Recursion · Stack & Queue · Linked Lists · Trees & Graphs · Dynamic Programming
+
+---
+
+### 6. 🎓 Guided Learning Studio
+
+A structured curriculum from beginner to advanced — with real Python exercises that are **verified by the execution engine** when you submit them.
+
+<img src="docs/screenshots/guided-learning.png" alt="Guided Learning Studio" width="100%"/>
+
+**Learning Paths:**
+
+| Level | Topics |
+|---|---|
+| **Beginner** | Variables & Name Binding, Loops & Accumulators, Functions & Scope |
+| **Intermediate** | Arrays, Two Pointers, Sliding Window, Hash Maps, Call Stack & Recursion |
+| **Advanced** | Trees, Graph Traversals, Dynamic Programming, Merge Sort, Quick Sort |
+
+Progress is **persisted** in SQLite + browser storage — your completed lessons survive page refreshes and server restarts.
+
+---
+
+## 🏗️ How It Works — Architecture
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                    Browser (Next.js 15)                    │
+│                                                            │
+│  Monaco Editor  →  Zustand Store  →  Visualizer Engine    │
+│  (write code)       (state mgmt)    (renders structures)  │
+│                           ↓                               │
+│               API Client (fetch)                          │
+└──────────────────────────┬─────────────────────────────────┘
+                           │ POST /api/execute
+                           ▼
+┌────────────────────────────────────────────────────────────┐
+│               Python 3.12 FastAPI Backend                  │
+│                                                            │
+│  runner.py → spawns isolated subprocess                    │
+│  worker_entry.py → PEP 578 audit hooks + env scrubbing    │
+│  tracer.py → sys.settrace captures every frame            │
+│  serializer.py → converts Python objects → JSON           │
+│  explainer.py → generates step explanations               │
+│                                                            │
+│  Returns: { steps[], variables[], structures[], error }   │
+└────────────────────────────────────────────────────────────┘
 ```
 
+**The key design decision:** User Python code **never runs in the Next.js process or the FastAPI server process**. It always runs in an isolated subprocess with PEP 578 audit hooks that block network, file system, subprocess spawning, and dynamic imports.
+
 ---
 
-## Local Installation & Running Guide
+## 🛡️ Security Model
+
+CodeFlow AI enforces defense-in-depth controls:
+
+| Control | Implementation |
+|---|---|
+| **Process Isolation** | User code runs in a separate subprocess, never in-process |
+| **Secret Scrubbing** | `os.environ.clear()` before user code compiles |
+| **PEP 578 Audit Hook** | Blocks `open()`, `socket.*`, `subprocess.*`, `os.fork`, `ctypes`, `dlopen` |
+| **Module Allowlist** | Only safe stdlib modules: `math`, `collections`, `heapq`, etc. |
+| **Resource Caps** | Max 500 steps, 60 recursion depth, 24KB stdout, POSIX RLIMIT caps |
+| **Timeout Kill** | SIGKILL sent to entire process group on timeout |
+| **Production Guard** | `CODEFLOW_ENV=production` requires Docker sandbox, refuses subprocess fallback |
+
+---
+
+## ⚙️ Tech Stack
+
+**Frontend**
+- [Next.js 15](https://nextjs.org/) with App Router + TypeScript
+- [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/) (VS Code's editor)
+- [Framer Motion](https://www.framer.com/motion/) for all animations
+- [Zustand](https://zustand-demo.pmnd.rs/) for state management
+- [Lucide React](https://lucide.dev/) icons
+
+**Backend**
+- [Python 3.12](https://www.python.org/) with `sys.settrace` tracer
+- [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)
+- [SQLite](https://www.sqlite.org/) for persistence
+- Google Gemini / OpenAI for AI Tutor (optional)
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
 - **Node.js** `>= 20.x` and `npm`
-- **Python** `3.12`
-- *(Optional, required for public production isolation)* **Docker Desktop / Docker Engine**
+- **Python 3.12**
+- *(Optional, for production isolation)* Docker Desktop
 
-### 1. Configure Environment Variables
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Saikrishivgar/CodeFlow-AI.git
+cd CodeFlow-AI
+```
+
+### 2. Configure environment variables
 
 ```bash
 cp .env.example .env.local
 cp .env.example backend/.env
 ```
 
-Add `GEMINI_API_KEY` or `OPENAI_API_KEY` in `backend/.env` if you want live LLM cloud responses in `/tutor`. Without external keys, the AI Tutor automatically uses the built-in **Deterministic Execution-Trace Tutor** grounded in real runtime snapshots.
+Optionally add your AI API key to `backend/.env`:
+```env
+# Pick one (or neither — the built-in tracer engine works without any key)
+GEMINI_API_KEY=your_gemini_key_here
+OPENAI_API_KEY=your_openai_key_here
+```
 
-### 2. Start the Python 3.12 FastAPI Backend (`127.0.0.1:8000`)
+### 3. Start the Python backend
 
 ```bash
 cd backend
@@ -76,48 +268,73 @@ python3.12 -m venv .venv
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### 3. Start the Next.js Frontend (`http://localhost:3000`)
+### 4. Start the Next.js frontend
 
 ```bash
+# In a new terminal, from the project root:
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open **http://localhost:3000** — you're ready to visualize code! 🎉
 
 ---
 
-## Running Automated Tests & Quality Checks
+## 🧪 Running Tests
 
 ```bash
-# 1. Backend unit, tracing, tutor, comparison, persistence & security tests (73 tests)
+# Backend: 73 pytest tests (tracer, security, tutor, persistence, comparison)
 backend/.venv/bin/pytest backend/tests -v
 
-# 2. Frontend unit tests (visualiser detectors, AI tutor grounding, Phase 5 catalogs & API)
+# Frontend: 18 unit tests (visualizer engine, AI tutor grounding, algorithm catalog)
 npm test
 
-# 3. TypeScript strict typecheck, ESLint & production build
+# Type checking + lint + production build
 npm run typecheck
 npm run lint
 npm run build
 ```
 
+All tests pass: **73/73 backend** · **18/18 frontend** · **0 TypeScript errors** · **0 lint warnings**
+
 ---
 
-## Python Execution Security Audit & Production Readiness Notice
+## 🗺️ Pages & Routes
 
-CODEFLOW AI enforces defense-in-depth controls inside [`backend/app/execution/worker_entry.py`](backend/app/execution/worker_entry.py) and [`backend/app/execution/runner.py`](backend/app/execution/runner.py):
+| Route | Description |
+|---|---|
+| `/` | Marketing landing page |
+| `/dashboard` | Overview, metrics, quick-start |
+| `/workspace` | **Main Python IDE + Visualizer + AI Tutor** |
+| `/algorithms` | Searchable algorithm library (14 blueprints) |
+| `/comparison` | Brute-force vs optimized side-by-side lab |
+| `/learn` | Guided learning paths (12 lessons) |
+| `/tutor` | Standalone AI Tutor Studio |
+| `/projects` | Saved projects manager |
+| `/history` | Replayable execution history |
+| `/settings` | Theme, profile, security audit |
 
-1. **Zero In-Process Execution**: User Python code never executes inside Next.js or the FastAPI server process.
-2. **Environment & Secret Scrubbing**: `os.environ.clear()` runs inside the worker before user code compiles or executes, and `_BACKEND_ROOT` is removed from `sys.path`, preventing access to `.env` secrets or application modules (`import app`).
-3. **PEP 578 Audit Hook (`sys.addaudithook`)**:
-   - Blocks all user `open()` file reads and writes (`_is_internal_importlib_open` only allows Python's internal stdlib module loader from `sys.base_prefix`).
-   - Blocks network sockets (`socket.*`), subprocess spawning (`os.system`, `subprocess.*`, `os.fork`, `os.exec*`), dynamic library loading (`ctypes`, `dlopen`), and `sqlite3`.
-4. **Strict Module Allowlist**: Only safe educational standard library modules (`math`, `collections`, `heapq`, `bisect`, `itertools`, `functools`, `typing`, `dataclasses`, `string`, `re`, `random`, `statistics`, `decimal`, `fractions`, `copy`, `enum`, `operator`) can be imported.
-5. **Step, Recursion, Memory & Wall-Clock Caps**: Enforces a configurable step limit (default `500`, hard max `1500`), recursion depth limit (`60`), stdout cap (`24 KB`), POSIX `RLIMIT_CPU` / `RLIMIT_NPROC` / `RLIMIT_FSIZE`, and deterministic process-group termination (`os.killpg(pgid, SIGKILL)`) on timeout.
-6. **Production Environment Guard (`CODEFLOW_ENV=production`)**:
-   - When `CODEFLOW_ENV=production` is set, `ExecutionRunner.detect_mode()` **strictly requires** a reachable Docker daemon and the `codeflow-python-runner:3.12` sandbox image (`--network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 32 --memory 128m --cpus 0.50 --user 65534:65534`), and guarantees `docker rm -f <container>` cleanup in a `finally` block.
-   - It **refuses** to fall back to `development_subprocess` in production.
+---
 
-> **Important Security Verification Status**:
-> While the Docker CLI is installed on the development machine, if the **Docker daemon is not running** on the host, live container execution cannot be verified in practice (`GET /api/security/audit` reports `docker_daemon_reachable: false`, `production_deployment_blocked: true`). **Do not expose `development_subprocess` mode to untrusted public internet traffic.** Before public multi-tenant deployment, start the Docker daemon, build `docker build -f backend/Dockerfile.runner -t codeflow-python-runner:3.12 ./backend`, and verify `GET /api/security/audit` returns `docker_isolation_verified: true` and `production_deployment_blocked: false`.
+## 🎯 Who Is This For?
+
+| Audience | How They Use It |
+|---|---|
+| **Absolute beginners** | Watch variables appear as assignments execute. Read plain-English step explanations. No jargon. |
+| **DSA students** | Visualize Two Pointers converging, BFS frontiers expanding, recursion trees growing |
+| **Interview prep** | Use the Comparison Lab to truly understand why optimized solutions are better |
+| **Curious developers** | Paste unfamiliar code and ask the AI Tutor to explain every step |
+
+---
+
+## 📄 License
+
+MIT © 2024 CodeFlow AI
+
+---
+
+<div align="center">
+
+**Built with ❤️ to make programming visual, intuitive, and actually fun to learn.**
+
+</div>
